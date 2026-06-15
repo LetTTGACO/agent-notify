@@ -1,4 +1,4 @@
-const SENSITIVE_KEY_PATTERN = /(token|authorization|api_key|apikey|password|secret)/i;
+const SENSITIVE_KEY_PATTERN = /(?:^|_)(token|authorization|api_key|apikey|password|secret)(?=$|_)/;
 
 export function redactValue(value: unknown): unknown {
   if (Array.isArray(value)) {

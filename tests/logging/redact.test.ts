@@ -15,4 +15,20 @@ describe("redactValue", () => {
       list: [{ api_key: "[REDACTED]" }],
     });
   });
+
+  it("does not redact lookalike keys like tokenName or authToken", () => {
+    expect(
+      redactValue({
+        tokenName: "macbook",
+        authToken: "should not be redacted by substring",
+        apiKey: "camelCase form",
+        tokensCount: 5,
+      }),
+    ).toEqual({
+      tokenName: "macbook",
+      authToken: "should not be redacted by substring",
+      apiKey: "camelCase form",
+      tokensCount: 5,
+    });
+  });
 });
