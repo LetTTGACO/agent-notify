@@ -21,6 +21,17 @@ export function createApp(options: CreateAppOptions): Hono {
   const logger = new JsonlLogger(options.logPath);
   const dedupe = new DedupeStore(options.dedupeSeconds * 1000);
 
+  async function safeLog(entry: Record<string, unknown>): Promise<void> {
+    try {
+      await logger.append(entry);
+    } catch (error) {
+      console.error(
+        "[agent-notify] log append failed:",
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  }
+
   app.get("/health", (c) =>
     c.json({
       ok: true,
@@ -32,7 +43,7 @@ export function createApp(options: CreateAppOptions): Hono {
   app.post("/events", async (c) => {
     const auth = authenticate(c.req.header("authorization") ?? null, options.tokens);
     if (!auth.ok) {
-      await logger.append({
+      await safeLog({
         receivedAt: new Date().toISOString(),
         status: "auth_rejected",
       });
@@ -43,7 +54,7 @@ export function createApp(options: CreateAppOptions): Hono {
     try {
       event = parseAgentEvent(await c.req.json());
     } catch {
-      await logger.append({
+      await safeLog({
         receivedAt: new Date().toISOString(),
         status: "payload_rejected",
         tokenName: auth.tokenName,
@@ -57,7 +68,7 @@ export function createApp(options: CreateAppOptions): Hono {
     const deduped = dedupe.seen(dedupeKey);
 
     if (deduped) {
-      await logger.append({
+      await safeLog({
         eventId,
         receivedAt,
         status: "deduped",
@@ -75,7 +86,7 @@ export function createApp(options: CreateAppOptions): Hono {
 
     const notification = formatNotification(event);
     const result = await options.provider.send(notification);
-    await logger.append({
+    await safeLog({
       eventId,
       receivedAt,
       status: result.ok ? "sent" : "provider_failed",

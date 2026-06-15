@@ -69,4 +69,28 @@ describe("server app", () => {
       logPath: "./data/test.jsonl",
     });
   });
+
+  it("does not fail /events when logger cannot write", async () => {
+    const mockProvider = provider();
+    const app = createApp({
+      tokens: [{ name: "macbook", value: "secret" }],
+      provider: mockProvider,
+      logPath: "/dev/null/should-not-exist/events.jsonl",
+      logRaw: false,
+      dedupeSeconds: 30,
+    });
+
+    const res = await app.request("/events", {
+      method: "POST",
+      body: JSON.stringify({ agent: "opencode", kind: "attention", title: "Hi" }),
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer secret",
+      },
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ ok: true });
+    expect(mockProvider.send).toHaveBeenCalledOnce();
+  });
 });
