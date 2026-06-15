@@ -16,19 +16,23 @@ describe("redactValue", () => {
     });
   });
 
-  it("does not redact lookalike keys like tokenName or authToken", () => {
+  it("redacts camelCase variants that contain the sensitive substrings", () => {
     expect(
       redactValue({
+        token: "abc",
+        authToken: "Bearer secret",
+        apiKey: "key-123",
         tokenName: "macbook",
-        authToken: "should not be redacted by substring",
-        apiKey: "camelCase form",
         tokensCount: 5,
+        password: "shh",
       }),
     ).toEqual({
-      tokenName: "macbook",
-      authToken: "should not be redacted by substring",
-      apiKey: "camelCase form",
-      tokensCount: 5,
+      token: "[REDACTED]",
+      authToken: "[REDACTED]",
+      apiKey: "[REDACTED]",
+      tokenName: "[REDACTED]",
+      tokensCount: "[REDACTED]",
+      password: "[REDACTED]",
     });
   });
 });
