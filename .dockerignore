@@ -1,0 +1,16 @@
+node_modules
+dist
+.git
+.idea
+.env
+.env.local
+data
+*.log
+docs/superpowers
+coverage
+tests
+examples
+.claude
+.agent-notify
+.DS_Store
+**/.DS_Store
