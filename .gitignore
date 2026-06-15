@@ -5,3 +5,4 @@ data/
 .agent-notify/
 *.log
 docs/superpowers/
+.idea
