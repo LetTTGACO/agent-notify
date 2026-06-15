@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
 
-function loadDotenv(): void {
+export function loadDotenv(): void {
   try {
     const envPath = join(process.cwd(), ".env");
     const text = readFileSync(envPath, "utf8");

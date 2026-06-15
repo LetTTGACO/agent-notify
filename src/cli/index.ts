@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { access, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
-import { parseConfig } from "../config/env.js";
+import { loadDotenv, parseConfig } from "../config/env.js";
 
 export function maskSecret(value: string): string {
   return value.replace(/(https?:\/\/[^/]+\/).+$/, "$1[REDACTED]");
@@ -44,6 +44,7 @@ async function postTestEvent(): Promise<void> {
 }
 
 async function doctor(): Promise<void> {
+  loadDotenv();
   const validation = validateDoctorConfig(process.env);
   for (const message of validation.messages) {
     console.log(`FAIL ${message}`);
