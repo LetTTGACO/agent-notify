@@ -120,18 +120,15 @@ async function notify(sourceEvent: string, payload: Record<string, unknown>) {
   await sendOpenCodeEvent(SERVER_URL, TOKEN, TIMEOUT_MS, safeEvent);
 }
 
-// OpenCode plugin: export a function that returns a hooks object.
+// OpenCode plugin: use the unified `event` hook so we don't have to guess
+// each event's input shape. The event object has a `type` discriminator and
+// carries the relevant fields (sessionID, cwd, etc.) directly.
 // See https://opencode.ai/docs/plugins/ for the real plugin API.
 export const AgentNotifyPlugin = async () => {
   return {
-    "permission.asked": async (input: { properties?: Record<string, unknown> }) =>
-      notify("permission.asked", input.properties ?? {}),
-    "session.error": async (input: { properties?: Record<string, unknown> }) =>
-      notify("session.error", input.properties ?? {}),
-    "session.idle": async (input: { properties?: Record<string, unknown> }) =>
-      notify("session.idle", input.properties ?? {}),
-    "permission.replied": async (input: { properties?: Record<string, unknown> }) =>
-      notify("permission.replied", input.properties ?? {}),
+    event: async ({ event }: { event: { type: string; [key: string]: unknown } }) => {
+      await notify(event.type, event as Record<string, unknown>);
+    },
   };
 };
 
