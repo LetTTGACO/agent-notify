@@ -48,7 +48,10 @@ async function doctor(): Promise<void> {
   for (const message of validation.messages) {
     console.log(`FAIL ${message}`);
   }
-  if (!validation.ok) process.exitCode = 1;
+  if (!validation.ok) {
+    process.exitCode = 1;
+    return;
+  }
 
   const config = parseConfig(process.env);
   console.log(`OK provider=bark endpoint=${maskSecret(config.barkEndpoint)}`);

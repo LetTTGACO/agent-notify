@@ -1,4 +1,32 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { z } from "zod";
+
+function loadDotenv(): void {
+  try {
+    const envPath = join(process.cwd(), ".env");
+    const text = readFileSync(envPath, "utf8");
+    for (const rawLine of text.split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith("#")) continue;
+      const eq = line.indexOf("=");
+      if (eq <= 0) continue;
+      const key = line.slice(0, eq).trim();
+      let value = line.slice(eq + 1).trim();
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
+        value = value.slice(1, -1);
+      }
+      if (process.env[key] === undefined) {
+        process.env[key] = value;
+      }
+    }
+  } catch {
+    // .env missing or unreadable; not an error
+  }
+}
 
 export interface NamedToken {
   name: string;
@@ -52,6 +80,7 @@ const envSchema = z.object({
 });
 
 export function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
+  loadDotenv();
   const parsed = envSchema.parse(env);
   return {
     host: parsed.AGENT_NOTIFY_HOST,
