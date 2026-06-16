@@ -80,7 +80,7 @@ Claude Code does not use the OpenCode plugin API. Use a command hook that runs t
         "hooks": [
           {
             "type": "command",
-            "command": "tsx /ABS/PATH/examples/claude-code/agent-notify.ts"
+            "command": "node /ABS/PATH/examples/claude-code/agent-notify.mjs"
           }
         ]
       }
@@ -90,7 +90,7 @@ Claude Code does not use the OpenCode plugin API. Use a command hook that runs t
         "hooks": [
           {
             "type": "command",
-            "command": "tsx /ABS/PATH/examples/claude-code/agent-notify.ts"
+            "command": "node /ABS/PATH/examples/claude-code/agent-notify.mjs"
           }
         ]
       }
@@ -100,7 +100,7 @@ Claude Code does not use the OpenCode plugin API. Use a command hook that runs t
         "hooks": [
           {
             "type": "command",
-            "command": "tsx /ABS/PATH/examples/claude-code/agent-notify.ts"
+            "command": "node /ABS/PATH/examples/claude-code/agent-notify.mjs"
           }
         ]
       }
@@ -110,7 +110,7 @@ Claude Code does not use the OpenCode plugin API. Use a command hook that runs t
         "hooks": [
           {
             "type": "command",
-            "command": "tsx /ABS/PATH/examples/claude-code/agent-notify.ts"
+            "command": "node /ABS/PATH/examples/claude-code/agent-notify.mjs"
           }
         ]
       }
@@ -126,24 +126,23 @@ Create `~/.config/claude-code/agent-notify.json`:
   "serverUrl": "http://127.0.0.1:8787",
   "token": "dev-token-change-me",
   "timeoutMs": 2000,
-  "completionMinSeconds": 120,
   "debugLogPath": "/Users/1874w/.config/claude-code/agent-notify-debug.jsonl"
 }
 ```
 
-The adapter forwards:
-
-- `Notification`
-- `StopFailure`
-- `Stop` only when the session has run for at least `completionMinSeconds`
-
-`UserPromptSubmit` only records the start time for completion threshold checks. The adapter stores that small state table in `~/.config/claude-code/agent-notify-state.json` by default and prunes stale entries.
+The adapter forwards `UserPromptSubmit`, `Notification`, `Stop`, and `StopFailure`.
+It is stateless: long-task completion tracking happens in the AgentNotify server.
+Enable Claude Code completion notifications by setting
+`AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS` on the server, for example `120`.
+The server keeps completion state in memory, deletes it on `Stop` or `StopFailure`,
+and prunes abnormal leftovers with a 24-hour TTL and 1000-session cap.
 
 ## Docker
 
 ```bash
 export AGENT_NOTIFY_TOKENS=macbook:dev-token-change-me
 export AGENT_NOTIFY_LANGUAGE=en # optional: zh
+export AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS=120 # optional
 export BARK_ENDPOINT=https://api.day.app/example-device-key
 docker compose -f deploy/docker/docker-compose.yml up --build
 ```

@@ -60,6 +60,7 @@ AGENT_NOTIFY_PORT=8787
 AGENT_NOTIFY_TOKENS=macbook:dev-token-change-me
 AGENT_NOTIFY_PROVIDER=bark
 AGENT_NOTIFY_LANGUAGE=en
+AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS=120
 BARK_ENDPOINT=https://api.day.app/example-device-key
 AGENT_NOTIFY_LOG_PATH=./data/events.jsonl
 AGENT_NOTIFY_LOG_RAW=false
@@ -224,7 +225,9 @@ pnpm test
 
 ## Claude Code 接入
 
-Claude Code 使用 command hooks 调用示例 adapter。这个 adapter 不进入正式 CLI；它只负责读取 Claude Code hook stdin、处理长任务阈值，然后把事件包装成现有 `/events` 请求。
+Claude Code 使用 command hooks 调用示例 adapter。这个 adapter 不进入正式 CLI；
+它只负责读取 Claude Code hook stdin，并把事件包装成现有 `/events` 请求。
+长任务完成阈值由 AgentNotify 服务端记录和判断。
 
 配置文件：
 
@@ -233,7 +236,6 @@ Claude Code 使用 command hooks 调用示例 adapter。这个 adapter 不进入
   "serverUrl": "http://127.0.0.1:8787",
   "token": "dev-token-change-me",
   "timeoutMs": 2000,
-  "completionMinSeconds": 120,
   "debugLogPath": "/Users/1874w/.config/claude-code/agent-notify-debug.jsonl"
 }
 ```
@@ -242,10 +244,12 @@ Claude Code 使用 command hooks 调用示例 adapter。这个 adapter 不进入
 
 - `UserPromptSubmit`：记录本轮开始时间，不发通知
 - `Notification`：需要用户注意时通知
-- `Stop`：达到 `completionMinSeconds` 后通知任务完成
+- `Stop`：达到 `AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS` 后通知任务完成
 - `StopFailure`：任务失败或限额错误时通知
 
-adapter 默认使用 `~/.config/claude-code/agent-notify-state.json` 保存小型状态表。它不是日志文件；每次写入会清理过期 session，并在 `Stop` / `StopFailure` 后删除对应 session。
+Claude Code adapter 本身不保存状态。服务端收到 `UserPromptSubmit` 后在内存中记录本轮开始时间；
+收到 `Stop` 后判断是否达到 `AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS`，然后删除该状态；
+收到 `StopFailure` 后也会删除状态并发送失败通知。异常残留由 24 小时 TTL 和 1000 条上限清理。
 
 ## 常用命令
 
