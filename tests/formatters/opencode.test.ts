@@ -315,4 +315,18 @@ describe("OpenCode formatter", () => {
 
     expect(formatted.notification.title).toBe("批准网页访问");
   });
+
+  it("does not send Claude Code events to the OpenCode formatter", () => {
+    expect(() =>
+      formatIncomingEvent({
+        agent: "claude-code",
+        raw: {
+          hook_event_name: "Notification",
+          notification_type: "permission_prompt",
+          session_id: "claude_dispatch_1",
+          message: "Claude needs permission",
+        },
+      }),
+    ).not.toThrow("OpenCode raw payload is missing type");
+  });
 });

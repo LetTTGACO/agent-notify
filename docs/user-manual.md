@@ -222,6 +222,31 @@ pnpm test
 
 如果 OpenCode 会话报错，你会收到标题为 `Failed` 的通知。
 
+## Claude Code 接入
+
+Claude Code 使用 command hooks 调用示例 adapter。这个 adapter 不进入正式 CLI；它只负责读取 Claude Code hook stdin、处理长任务阈值，然后把事件包装成现有 `/events` 请求。
+
+配置文件：
+
+```json
+{
+  "serverUrl": "http://127.0.0.1:8787",
+  "token": "dev-token-change-me",
+  "timeoutMs": 2000,
+  "completionMinSeconds": 120,
+  "debugLogPath": "/Users/1874w/.config/claude-code/agent-notify-debug.jsonl"
+}
+```
+
+需要配置的 Claude Code hooks：
+
+- `UserPromptSubmit`：记录本轮开始时间，不发通知
+- `Notification`：需要用户注意时通知
+- `Stop`：达到 `completionMinSeconds` 后通知任务完成
+- `StopFailure`：任务失败或限额错误时通知
+
+adapter 默认使用 `~/.config/claude-code/agent-notify-state.json` 保存小型状态表。它不是日志文件；每次写入会清理过期 session，并在 `Stop` / `StopFailure` 后删除对应 session。
+
 ## 常用命令
 
 本地开发：

@@ -24,6 +24,21 @@ describe("IncomingAgentEvent schema", () => {
     expect(event.raw).toMatchObject({ type: "permission.v2.asked" });
   });
 
+  it("accepts a Claude Code raw envelope", () => {
+    const event = parseIncomingAgentEvent({
+      agent: "claude-code",
+      raw: {
+        hook_event_name: "Notification",
+        notification_type: "permission_prompt",
+        session_id: "claude_session_1",
+        message: "Claude needs your permission",
+      },
+    });
+
+    expect(event.agent).toBe("claude-code");
+    expect(event.raw).toMatchObject({ hook_event_name: "Notification" });
+  });
+
   it("rejects the old normalized AgentEvent contract", () => {
     expect(() =>
       parseIncomingAgentEvent({
@@ -38,8 +53,8 @@ describe("IncomingAgentEvent schema", () => {
   it("rejects unsupported agent names in this MVP", () => {
     expect(() =>
       incomingAgentEventSchema.parse({
-        agent: "claude",
-        raw: { type: "permission.asked" },
+        agent: "gemini",
+        raw: { hook_event_name: "Notification" },
       }),
     ).toThrow();
   });

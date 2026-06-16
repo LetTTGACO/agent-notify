@@ -68,6 +68,77 @@ The server formats the raw event into a short notification. The adapter is fail-
 
 `debugLogPath` is optional. When set, the OpenCode plugin writes one JSONL entry for every event it sees, including whether that event was forwarded to AgentNotify and the raw OpenCode event payload. Treat this file as local debug data and do not share it without review.
 
+## Claude Code Adapter
+
+Claude Code does not use the OpenCode plugin API. Use a command hook that runs the example adapter:
+
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "tsx /ABS/PATH/examples/claude-code/agent-notify.ts"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "tsx /ABS/PATH/examples/claude-code/agent-notify.ts"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "tsx /ABS/PATH/examples/claude-code/agent-notify.ts"
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "tsx /ABS/PATH/examples/claude-code/agent-notify.ts"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Create `~/.config/claude-code/agent-notify.json`:
+
+```json
+{
+  "serverUrl": "http://127.0.0.1:8787",
+  "token": "dev-token-change-me",
+  "timeoutMs": 2000,
+  "completionMinSeconds": 120,
+  "debugLogPath": "/Users/1874w/.config/claude-code/agent-notify-debug.jsonl"
+}
+```
+
+The adapter forwards:
+
+- `Notification`
+- `StopFailure`
+- `Stop` only when the session has run for at least `completionMinSeconds`
+
+`UserPromptSubmit` only records the start time for completion threshold checks. The adapter stores that small state table in `~/.config/claude-code/agent-notify-state.json` by default and prunes stale entries.
+
 ## Docker
 
 ```bash

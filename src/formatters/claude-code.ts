@@ -1,0 +1,163 @@
+import type { IncomingAgentEvent } from "../core/incoming-event.js";
+import {
+  EventFormatError,
+  type FormattedAgentEvent,
+} from "../core/formatted-event.js";
+import {
+  defaultNotificationLanguage,
+  type NotificationLanguage,
+} from "../core/language.js";
+
+const MAX_BODY_LENGTH = 80;
+
+type UnknownRecord = Record<string, unknown>;
+
+export interface FormatterOptions {
+  language?: NotificationLanguage;
+}
+
+function languageFromOptions(options?: FormatterOptions): NotificationLanguage {
+  return options?.language ?? defaultNotificationLanguage;
+}
+
+function isRecord(value: unknown): value is UnknownRecord {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function oneLine(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function truncate(value: string, maxLength = MAX_BODY_LENGTH): string {
+  const text = oneLine(value);
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength - 3).trimEnd()}...`;
+}
+
+function requireRawRecord(raw: unknown): UnknownRecord {
+  if (!isRecord(raw)) {
+    throw new EventFormatError("Claude Code raw payload must be an object");
+  }
+  return raw;
+}
+
+function requireHookEvent(raw: UnknownRecord): string {
+  const hookEvent = getString(raw.hook_event_name);
+  if (!hookEvent) {
+    throw new EventFormatError("Claude Code raw payload is missing hook_event_name");
+  }
+  return hookEvent;
+}
+
+function permissionTitle(language: NotificationLanguage): string {
+  return language === "zh" ? "需要批准" : "Approve permission";
+}
+
+function questionTitle(language: NotificationLanguage): string {
+  return language === "zh" ? "需要回答" : "Question";
+}
+
+function completedTitle(language: NotificationLanguage): string {
+  return language === "zh" ? "任务已完成" : "Task complete";
+}
+
+function completedBody(language: NotificationLanguage): string {
+  return language === "zh" ? "可以查看结果了" : "Ready to review";
+}
+
+function failedTitle(language: NotificationLanguage): string {
+  return language === "zh" ? "失败" : "Failed";
+}
+
+function notificationFallback(language: NotificationLanguage): string {
+  return language === "zh" ? "请回到终端查看" : "Check the terminal";
+}
+
+function failedFallback(language: NotificationLanguage): string {
+  return language === "zh" ? "任务异常终止" : "Task failed";
+}
+
+function notificationMessage(raw: UnknownRecord, language: NotificationLanguage): string {
+  return truncate(
+    getString(raw.message) ??
+      getString(raw.title) ??
+      notificationFallback(language),
+  );
+}
+
+function failureMessage(raw: UnknownRecord, language: NotificationLanguage): string {
+  return truncate(
+    getString(raw.error_details) ??
+      getString(raw.last_assistant_message) ??
+      getString(raw.message) ??
+      getString(raw.error) ??
+      failedFallback(language),
+  );
+}
+
+function sessionId(raw: UnknownRecord): string | undefined {
+  return getString(raw.session_id);
+}
+
+export function formatClaudeCodeEvent(
+  event: IncomingAgentEvent,
+  options?: FormatterOptions,
+): FormattedAgentEvent {
+  const language = languageFromOptions(options);
+  const raw = requireRawRecord(event.raw);
+  const sourceEvent = requireHookEvent(raw);
+
+  if (sourceEvent === "Notification") {
+    const notificationType = getString(raw.notification_type);
+    const isPermission = notificationType === "permission_prompt";
+
+    return {
+      agent: event.agent,
+      kind: isPermission ? "permission_required" : "question_required",
+      sourceEvent,
+      sessionId: sessionId(raw),
+      notification: {
+        title: isPermission ? permissionTitle(language) : questionTitle(language),
+        body: notificationMessage(raw, language),
+        urgency: "time_sensitive",
+        group: "Claude Code",
+      },
+    };
+  }
+
+  if (sourceEvent === "Stop") {
+    return {
+      agent: event.agent,
+      kind: "completed",
+      sourceEvent,
+      sessionId: sessionId(raw),
+      notification: {
+        title: completedTitle(language),
+        body: completedBody(language),
+        urgency: "time_sensitive",
+        group: "Claude Code",
+      },
+    };
+  }
+
+  if (sourceEvent === "StopFailure") {
+    return {
+      agent: event.agent,
+      kind: "failed",
+      sourceEvent,
+      sessionId: sessionId(raw),
+      notification: {
+        title: failedTitle(language),
+        body: failureMessage(raw, language),
+        urgency: "time_sensitive",
+        group: "Claude Code",
+      },
+    };
+  }
+
+  throw new EventFormatError(`Unsupported Claude Code hook event: ${sourceEvent}`);
+}

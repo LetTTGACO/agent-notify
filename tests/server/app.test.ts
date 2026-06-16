@@ -70,6 +70,37 @@ describe("server app", () => {
     });
   });
 
+  it("accepts a raw Claude Code event and sends formatted provider notification", async () => {
+    const mockProvider = provider();
+    const app = createApp(appOptions(mockProvider));
+
+    const res = await app.request("/events", {
+      method: "POST",
+      body: JSON.stringify({
+        agent: "claude-code",
+        raw: {
+          hook_event_name: "Notification",
+          notification_type: "permission_prompt",
+          session_id: "claude_server_1",
+          message: "Claude needs permission to use Bash",
+        },
+      }),
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer secret",
+      },
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ ok: true });
+    expect(mockProvider.send).toHaveBeenCalledWith({
+      title: "Approve permission",
+      body: "Claude needs permission to use Bash",
+      urgency: "time_sensitive",
+      group: "Claude Code",
+    });
+  });
+
   it("sends Chinese formatted notifications when configured", async () => {
     const mockProvider = provider();
     const app = createApp({
