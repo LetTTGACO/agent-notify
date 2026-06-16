@@ -95,7 +95,7 @@ describe("OpenCode formatter", () => {
     });
   });
 
-  it("formats session.idle as a completion notification", () => {
+  it("formats session.idle as a review notification", () => {
     const formatted = formatOpenCodeEvent({
       agent: "opencode",
       raw: {
@@ -112,31 +112,10 @@ describe("OpenCode formatter", () => {
       sourceEvent: "session.idle",
       sessionId: "session_complete_1",
       notification: {
-        title: "Task complete",
-        body: "Ready to review",
         urgency: "time_sensitive",
         group: "OpenCode",
       },
     });
-  });
-
-  it("formats session.idle completion in Chinese", () => {
-    const formatted = formatOpenCodeEvent(
-      {
-        agent: "opencode",
-        raw: {
-          id: "evt_complete_zh_1",
-          type: "session.idle",
-          properties: {
-            sessionID: "session_complete_zh_1",
-          },
-        },
-      },
-      { language: "zh" },
-    );
-
-    expect(formatted.notification.title).toBe("任务已完成");
-    expect(formatted.notification.body).toBe("可以查看结果了");
   });
 
   it("formats question.asked as a short answer-required notification", () => {

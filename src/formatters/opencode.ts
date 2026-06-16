@@ -117,11 +117,11 @@ function questionFallback(language: NotificationLanguage): string {
 }
 
 function completedTitle(language: NotificationLanguage): string {
-  return language === "zh" ? "任务已完成" : "Task complete";
+  return language === "zh" ? "待审阅" : "Ready to review";
 }
 
 function completedBody(language: NotificationLanguage): string {
-  return language === "zh" ? "可以查看结果了" : "Ready to review";
+  return language === "zh" ? "看看结果或下一步" : "Review results or next steps";
 }
 
 function questionBody(properties: UnknownRecord, language: NotificationLanguage): string {
