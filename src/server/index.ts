@@ -12,6 +12,7 @@ const app = createApp({
   logRaw: config.logRaw,
   language: config.language,
   claudeCompletionMinSeconds: config.claudeCompletionMinSeconds,
+  codexCompletionMinSeconds: config.codexCompletionMinSeconds,
 });
 
 serve({

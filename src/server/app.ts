@@ -12,6 +12,10 @@ import {
   ClaudeCodeSessionPolicy,
   type ClaudeCodeSessionPolicyDecision,
 } from "./claude-code-session-policy.js";
+import {
+  CodexSessionPolicy,
+  type CodexSessionPolicyDecision,
+} from "./codex-session-policy.js";
 
 export interface CreateAppOptions {
   tokens: NamedToken[];
@@ -21,6 +25,8 @@ export interface CreateAppOptions {
   language: NotificationLanguage;
   claudeCompletionMinSeconds: number;
   claudeCodeSessionPolicy?: ClaudeCodeSessionPolicy;
+  codexCompletionMinSeconds: number;
+  codexSessionPolicy?: CodexSessionPolicy;
 }
 
 function trace(stage: string, fields: Record<string, unknown>): void {
@@ -46,6 +52,11 @@ export function createApp(options: CreateAppOptions): Hono {
     new ClaudeCodeSessionPolicy({
       completionMinSeconds: options.claudeCompletionMinSeconds,
     });
+  const codexSessionPolicy =
+    options.codexSessionPolicy ??
+    new CodexSessionPolicy({
+      completionMinSeconds: options.codexCompletionMinSeconds,
+    });
 
   async function safeLog(entry: Record<string, unknown>): Promise<void> {
     try {
@@ -63,6 +74,32 @@ export function createApp(options: CreateAppOptions): Hono {
     tokenName: string,
     incomingAgent: "claude-code",
     decision: Exclude<ClaudeCodeSessionPolicyDecision, { action: "continue" }>,
+  ): Promise<void> {
+    trace("suppressed", {
+      receivedAt,
+      tokenName,
+      agent: incomingAgent,
+      sourceEvent: decision.sourceEvent,
+      sessionId: decision.sessionId,
+      reason: decision.reason,
+    });
+    await safeLog({
+      receivedAt,
+      status: "suppressed",
+      tokenName,
+      agent: incomingAgent,
+      kind: "state",
+      sessionId: decision.sessionId,
+      sourceEvent: decision.sourceEvent,
+      reason: decision.reason,
+    });
+  }
+
+  async function logSuppressedCodexEvent(
+    receivedAt: string,
+    tokenName: string,
+    incomingAgent: "codex",
+    decision: Exclude<CodexSessionPolicyDecision, { action: "continue" }>,
   ): Promise<void> {
     trace("suppressed", {
       receivedAt,
@@ -141,6 +178,21 @@ export function createApp(options: CreateAppOptions): Hono {
         auth.tokenName!,
         "claude-code",
         policyDecision,
+      );
+      return c.json({ ok: true, notified: false });
+    }
+
+    const codexPolicyDecision = codexSessionPolicy.apply(
+      incoming,
+      auth.tokenName!,
+    );
+
+    if (codexPolicyDecision.action === "suppress") {
+      await logSuppressedCodexEvent(
+        receivedAt,
+        auth.tokenName!,
+        "codex",
+        codexPolicyDecision,
       );
       return c.json({ ok: true, notified: false });
     }

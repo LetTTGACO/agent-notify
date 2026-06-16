@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFile, rm } from "node:fs/promises";
 import { createApp } from "../../src/server/app.js";
 import { ClaudeCodeSessionPolicy } from "../../src/server/claude-code-session-policy.js";
+import { CodexSessionPolicy } from "../../src/server/codex-session-policy.js";
 import type { NotificationProvider } from "../../src/providers/types.js";
 
 function provider(): NotificationProvider {
@@ -19,6 +20,7 @@ function appOptions(mockProvider = provider()) {
     logRaw: false,
     language: "en" as const,
     claudeCompletionMinSeconds: 0,
+    codexCompletionMinSeconds: 0,
   };
 }
 
@@ -437,6 +439,242 @@ describe("server app", () => {
       urgency: "time_sensitive",
       group: "Claude Code",
       icon: "https://claude.ai/favicon.ico",
+    });
+  });
+
+  it("records Codex UserPromptSubmit without sending a notification", async () => {
+    const mockProvider = provider();
+    const app = createApp({
+      ...appOptions(mockProvider),
+      codexCompletionMinSeconds: 120,
+      codexSessionPolicy: new CodexSessionPolicy({
+        completionMinSeconds: 120,
+        nowMs: () => 1_000,
+      }),
+    });
+
+    const res = await app.request("/events", {
+      method: "POST",
+      body: JSON.stringify({
+        agent: "codex",
+        raw: {
+          hook_event_name: "UserPromptSubmit",
+          session_id: "codex_server_prompt",
+        },
+      }),
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer secret",
+      },
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, notified: false });
+    expect(mockProvider.send).not.toHaveBeenCalled();
+  });
+
+  it("sends Codex PermissionRequest immediately", async () => {
+    const mockProvider = provider();
+    const app = createApp({
+      ...appOptions(mockProvider),
+      codexCompletionMinSeconds: 120,
+    });
+
+    const res = await app.request("/events", {
+      method: "POST",
+      body: JSON.stringify({
+        agent: "codex",
+        raw: {
+          hook_event_name: "PermissionRequest",
+          session_id: "codex_permission",
+          tool_name: "Bash",
+          tool_input: {
+            description: "Codex wants to run pnpm test",
+            command: "pnpm test",
+          },
+        },
+      }),
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer secret",
+      },
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ ok: true });
+    expect(mockProvider.send).toHaveBeenCalledWith({
+      title: "Approve permission",
+      body: "Codex wants to run pnpm test",
+      urgency: "time_sensitive",
+      group: "Codex",
+      icon: "https://openai.com/favicon.ico",
+    });
+  });
+
+  it("suppresses Codex Stop before the completion threshold", async () => {
+    let nowMs = 1_000;
+    const mockProvider = provider();
+    const policy = new CodexSessionPolicy({
+      completionMinSeconds: 120,
+      nowMs: () => nowMs,
+    });
+    const app = createApp({
+      ...appOptions(mockProvider),
+      codexCompletionMinSeconds: 120,
+      codexSessionPolicy: policy,
+    });
+
+    await app.request("/events", {
+      method: "POST",
+      body: JSON.stringify({
+        agent: "codex",
+        raw: {
+          hook_event_name: "UserPromptSubmit",
+          session_id: "codex_short",
+        },
+      }),
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer secret",
+      },
+    });
+
+    nowMs += 10_000;
+
+    const res = await app.request("/events", {
+      method: "POST",
+      body: JSON.stringify({
+        agent: "codex",
+        raw: {
+          hook_event_name: "Stop",
+          session_id: "codex_short",
+        },
+      }),
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer secret",
+      },
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, notified: false });
+    expect(mockProvider.send).not.toHaveBeenCalled();
+  });
+
+  it("sends Codex Stop after the completion threshold", async () => {
+    let nowMs = 1_000;
+    const mockProvider = provider();
+    const policy = new CodexSessionPolicy({
+      completionMinSeconds: 120,
+      nowMs: () => nowMs,
+    });
+    const app = createApp({
+      ...appOptions(mockProvider),
+      codexCompletionMinSeconds: 120,
+      codexSessionPolicy: policy,
+    });
+
+    await app.request("/events", {
+      method: "POST",
+      body: JSON.stringify({
+        agent: "codex",
+        raw: {
+          hook_event_name: "UserPromptSubmit",
+          session_id: "codex_long",
+        },
+      }),
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer secret",
+      },
+    });
+
+    nowMs += 121_000;
+
+    const res = await app.request("/events", {
+      method: "POST",
+      body: JSON.stringify({
+        agent: "codex",
+        raw: {
+          hook_event_name: "Stop",
+          session_id: "codex_long",
+          last_assistant_message: "Codex finished the requested change.",
+        },
+      }),
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer secret",
+      },
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ ok: true });
+    expect(mockProvider.send).toHaveBeenCalledWith({
+      title: "Ready to review",
+      body: "Codex finished the requested change.",
+      urgency: "time_sensitive",
+      group: "Codex",
+      icon: "https://openai.com/favicon.ico",
+    });
+  });
+
+  it("logs a JSONL suppressed entry for Codex UserPromptSubmit", async () => {
+    const logPath = `./data/test-codex-suppressed-${Date.now()}.jsonl`;
+    trackedLogPaths.push(logPath);
+
+    const mockProvider = provider();
+    const app = createApp({
+      ...appOptions(mockProvider),
+      logPath,
+      codexCompletionMinSeconds: 120,
+      codexSessionPolicy: new CodexSessionPolicy({
+        completionMinSeconds: 120,
+        nowMs: () => 1_000,
+      }),
+    });
+
+    const sessionId = `codex_prompt_${Date.now()}`;
+    const res = await app.request("/events", {
+      method: "POST",
+      body: JSON.stringify({
+        agent: "codex",
+        raw: {
+          hook_event_name: "UserPromptSubmit",
+          session_id: sessionId,
+        },
+      }),
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer secret",
+      },
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, notified: false });
+    expect(mockProvider.send).not.toHaveBeenCalled();
+
+    const contents = await readFile(logPath, "utf8");
+    const lines = contents
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+    const suppressedLine = lines
+      .map((line) => JSON.parse(line) as Record<string, unknown>)
+      .find(
+        (entry) =>
+          entry.status === "suppressed" &&
+          entry.kind === "state" &&
+          entry.agent === "codex" &&
+          entry.sourceEvent === "UserPromptSubmit",
+      );
+
+    expect(suppressedLine).toMatchObject({
+      status: "suppressed",
+      kind: "state",
+      agent: "codex",
+      sourceEvent: "UserPromptSubmit",
+      sessionId,
+      reason: "state_recorded",
     });
   });
 
