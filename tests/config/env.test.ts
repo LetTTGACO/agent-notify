@@ -27,7 +27,7 @@ describe("config parsing", () => {
     expect(config.provider).toBe("bark");
     expect(config.logPath).toBe("./data/events.jsonl");
     expect(config.logRaw).toBe(false);
-    expect(config.dedupeSeconds).toBe(30);
+    expect("dedupeSeconds" in config).toBe(false);
   });
 
   it("loads missing env vars from a .env file", () => {
