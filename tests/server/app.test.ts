@@ -253,6 +253,38 @@ describe("server app", () => {
     expect(mockProvider.send).not.toHaveBeenCalled();
   });
 
+  it("suppresses Claude Code idle Notification without sending a notification", async () => {
+    const mockProvider = provider();
+    const app = createApp({
+      ...appOptions(mockProvider),
+      claudeCodeSessionPolicy: new ClaudeCodeSessionPolicy({
+        completionMinSeconds: 120,
+        nowMs: () => 1_000,
+      }),
+    });
+
+    const res = await app.request("/events", {
+      method: "POST",
+      body: JSON.stringify({
+        agent: "claude-code",
+        raw: {
+          hook_event_name: "Notification",
+          notification_type: "idle_prompt",
+          session_id: "claude_idle",
+          message: "Claude is waiting for your input",
+        },
+      }),
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer secret",
+      },
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, notified: false });
+    expect(mockProvider.send).not.toHaveBeenCalled();
+  });
+
   it("suppresses Claude Code Stop before the completion threshold", async () => {
     let nowMs = 1_000;
     const mockProvider = provider();

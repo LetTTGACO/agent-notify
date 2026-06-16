@@ -25,7 +25,8 @@ export type ClaudeCodeSessionPolicyDecision =
         | "completion_disabled"
         | "missing_session"
         | "missing_start"
-        | "below_threshold";
+        | "below_threshold"
+        | "ignored_notification";
       sourceEvent?: string;
       sessionId?: string;
     };
@@ -46,6 +47,11 @@ function hookEventName(raw: unknown): string | undefined {
 function sessionId(raw: unknown): string | undefined {
   if (!isRecord(raw)) return undefined;
   return getString(raw.session_id);
+}
+
+function notificationType(raw: unknown): string | undefined {
+  if (!isRecord(raw)) return undefined;
+  return getString(raw.notification_type);
 }
 
 export class ClaudeCodeSessionPolicy {
@@ -82,6 +88,18 @@ export class ClaudeCodeSessionPolicy {
       return {
         action: "suppress",
         reason: "state_recorded",
+        sourceEvent,
+        sessionId: id,
+      };
+    }
+
+    if (
+      sourceEvent === "Notification" &&
+      notificationType(event.raw) === "idle_prompt"
+    ) {
+      return {
+        action: "suppress",
+        reason: "ignored_notification",
         sourceEvent,
         sessionId: id,
       };

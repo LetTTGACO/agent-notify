@@ -6,7 +6,7 @@
 
 AgentNotify 是一个本地通知中转站：
 
-1. OpenCode 或 Claude Code 运行到需要你处理的事件，例如请求命令权限、等待输入、会话完成或会话报错。
+1. OpenCode 或 Claude Code 运行到需要你处理的事件，例如请求命令权限、问题选择、长任务完成或会话报错。
 2. 本地 adapter 把事件发到本机的 AgentNotify 服务。
 3. AgentNotify 把事件格式化成简短通知。
 4. AgentNotify 调用 Bark，把通知推到你的 iPhone / Apple Watch。
@@ -24,7 +24,7 @@ AgentNotify 是一个本地通知中转站：
 Claude Code 侧支持这些 hooks：
 
 - `UserPromptSubmit`：只用于服务端记录本轮开始时间，不推送手机通知
-- `Notification`：Claude Code 需要你注意时推送
+- `Notification`：Claude Code 需要权限批准或处理 MCP 交互时推送；普通 `idle_prompt` 默认忽略
 - `Stop`：长任务达到服务端阈值后推送完成通知
 - `StopFailure`：任务失败或限额错误时推送
 
@@ -252,7 +252,7 @@ BARK_ENDPOINT=https://api.day.app/你的设备Key
 AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS=120
 ```
 
-如果设为 `0` 或不配置，Claude Code 的权限、等待输入、失败通知仍然会发送，但不会发送完成通知。
+如果设为 `0` 或不配置，Claude Code 的权限、MCP 交互、失败通知仍然会发送，但不会发送完成通知。
 
 启动服务：
 
@@ -374,9 +374,11 @@ printf '%s\n' "$HOME/.config/agent-notify/agent-notify.mjs"
 这四个 hooks 的作用是：
 
 - `UserPromptSubmit`：记录本轮开始时间，不发通知
-- `Notification`：需要用户注意时通知
+- `Notification`：权限批准或 MCP 交互通知；普通 `idle_prompt` 不通知
 - `Stop`：达到 `AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS` 后通知任务完成
 - `StopFailure`：任务失败或限额错误时通知
+
+这里不要求给 `Notification` 配 `matcher`，adapter 和服务端都会默认忽略 `idle_prompt`。如果你想减少 Claude Code 启动 adapter 的次数，也可以给 `Notification` 额外加 matcher：`permission_prompt|elicitation_dialog|elicitation_complete|elicitation_response`。
 
 配置完成后，重启 Claude Code，让 settings 生效。
 
@@ -391,7 +393,7 @@ pnpm dev
 然后可以用一条手动 hook payload 测试 adapter 是否能连到服务端。把命令里的 adapter 路径换成你的绝对路径：
 
 ```bash
-printf '{"hook_event_name":"Notification","notification_type":"idle_prompt","session_id":"manual_test","message":"AgentNotify manual test"}' | node /ABS/PATH/.config/agent-notify/agent-notify.mjs
+printf '{"hook_event_name":"Notification","notification_type":"permission_prompt","session_id":"manual_test","message":"AgentNotify manual test"}' | node /ABS/PATH/.config/agent-notify/agent-notify.mjs
 ```
 
 如果配置正确，你应该会收到一条手机通知。也可以看 adapter debug log：
@@ -410,7 +412,7 @@ tail -f ~/.config/agent-notify/claude-code-debug.jsonl
 
 ### 6. 验证 Claude Code 实际 hook
 
-在 Claude Code 里触发一个需要你注意的操作，例如让它执行一个需要确认的命令。你应该收到权限或等待输入类通知。
+在 Claude Code 里触发一个需要你注意的操作，例如让它执行一个需要确认的命令。你应该收到权限通知。
 
 如果想验证长任务完成通知，可以临时把服务端阈值调低：
 
@@ -422,7 +424,7 @@ AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS=5
 
 Claude Code adapter 本身不保存状态。服务端收到 `UserPromptSubmit` 后在内存中记录本轮开始时间；
 收到 `Stop` 后判断是否达到 `AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS`，然后删除该状态；
-收到 `StopFailure` 后也会删除状态并发送失败通知。异常残留由 24 小时 TTL 和 1000 条上限清理。
+收到 `StopFailure` 后也会删除状态并发送失败通知。Claude Code 每轮结束后可能触发的 `Notification` / `idle_prompt` 会被 adapter 和服务端默认忽略，避免和长任务完成通知重复。异常残留由 24 小时 TTL 和 1000 条上限清理。
 
 ## 常用命令
 
@@ -585,7 +587,7 @@ tail -f ~/.config/opencode/agent-notify-debug.jsonl
 先用手动 payload 测试 adapter：
 
 ```bash
-printf '{"hook_event_name":"Notification","notification_type":"idle_prompt","session_id":"manual_debug","message":"AgentNotify debug"}' | node /ABS/PATH/.config/agent-notify/agent-notify.mjs
+printf '{"hook_event_name":"Notification","notification_type":"permission_prompt","session_id":"manual_debug","message":"AgentNotify debug"}' | node /ABS/PATH/.config/agent-notify/agent-notify.mjs
 ```
 
 再看 adapter debug log：

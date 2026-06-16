@@ -27,8 +27,15 @@ describe("Claude Code adapter example", () => {
     expect(
       adapter.shouldForwardClaudeCodeEvent({
         hook_event_name: "Notification",
+        notification_type: "permission_prompt",
       }),
     ).toBe(true);
+    expect(
+      adapter.shouldForwardClaudeCodeEvent({
+        hook_event_name: "Notification",
+        notification_type: "idle_prompt",
+      }),
+    ).toBe(false);
     expect(
       adapter.shouldForwardClaudeCodeEvent({
         hook_event_name: "Stop",

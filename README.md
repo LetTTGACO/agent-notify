@@ -130,7 +130,9 @@ Create `~/.config/agent-notify/claude-code.json`:
 }
 ```
 
-The adapter forwards `UserPromptSubmit`, `Notification`, `Stop`, and `StopFailure`.
+The adapter forwards `UserPromptSubmit`, selected `Notification` types, `Stop`, and `StopFailure`.
+Claude Code's `idle_prompt` notification is ignored by default so ordinary completed turns do not duplicate long-task completion notifications.
+If you want Claude Code to invoke the adapter less often, you can optionally add a `Notification` matcher such as `permission_prompt|elicitation_dialog|elicitation_complete|elicitation_response`.
 It is stateless: long-task completion tracking happens in the AgentNotify server.
 Enable Claude Code completion notifications by setting
 `AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS` on the server, for example `120`.

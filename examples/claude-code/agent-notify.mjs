@@ -32,8 +32,18 @@ function getSessionId(raw) {
     : undefined;
 }
 
+function getNotificationType(raw) {
+  if (!isRecord(raw)) return undefined;
+  return typeof raw.notification_type === "string" && raw.notification_type.trim()
+    ? raw.notification_type
+    : undefined;
+}
+
 export function shouldForwardClaudeCodeEvent(raw) {
   const hookEventName = getHookEventName(raw);
+  if (hookEventName === "Notification" && getNotificationType(raw) === "idle_prompt") {
+    return false;
+  }
   return typeof hookEventName === "string" && NOTIFY_EVENT_NAMES.has(hookEventName);
 }
 

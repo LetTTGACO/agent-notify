@@ -8,6 +8,13 @@ function claudeEvent(hook_event_name: string, session_id = "session_1") {
   };
 }
 
+function claudeNotification(notification_type: string, session_id = "session_1") {
+  return {
+    agent: "claude-code" as const,
+    raw: { hook_event_name: "Notification", notification_type, session_id },
+  };
+}
+
 describe("ClaudeCodeSessionPolicy", () => {
   it("records UserPromptSubmit without continuing to formatter", () => {
     const policy = new ClaudeCodeSessionPolicy({
@@ -71,6 +78,31 @@ describe("ClaudeCodeSessionPolicy", () => {
       action: "continue",
     });
     expect(policy.sessionCount()).toBe(0);
+  });
+
+  it("suppresses idle Notification prompts", () => {
+    const policy = new ClaudeCodeSessionPolicy({
+      completionMinSeconds: 120,
+      nowMs: () => 1_000,
+    });
+
+    expect(policy.apply(claudeNotification("idle_prompt"), "macbook")).toEqual({
+      action: "suppress",
+      reason: "ignored_notification",
+      sourceEvent: "Notification",
+      sessionId: "session_1",
+    });
+  });
+
+  it("continues permission Notification prompts", () => {
+    const policy = new ClaudeCodeSessionPolicy({
+      completionMinSeconds: 120,
+      nowMs: () => 1_000,
+    });
+
+    expect(policy.apply(claudeNotification("permission_prompt"), "macbook")).toEqual({
+      action: "continue",
+    });
   });
 
   it("does not mix sessions across token names", () => {
