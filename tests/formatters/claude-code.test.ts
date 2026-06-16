@@ -24,6 +24,7 @@ describe("Claude Code formatter", () => {
         body: "Claude needs permission to use Bash",
         urgency: "time_sensitive",
         group: "Claude Code",
+        icon: "https://claude.ai/favicon.ico",
       },
     });
   });
@@ -48,6 +49,7 @@ describe("Claude Code formatter", () => {
         body: "Claude is waiting for your input",
         urgency: "time_sensitive",
         group: "Claude Code",
+        icon: "https://claude.ai/favicon.ico",
       },
     });
   });
@@ -66,8 +68,6 @@ describe("Claude Code formatter", () => {
       sourceEvent: "Stop",
       sessionId: "claude_session_3",
       notification: {
-        title: "Task complete",
-        body: "Ready to review",
         urgency: "time_sensitive",
         group: "Claude Code",
       },
@@ -94,6 +94,7 @@ describe("Claude Code formatter", () => {
         body: "You've hit your session limit; resets 1:10am (Asia/Shanghai)",
         urgency: "time_sensitive",
         group: "Claude Code",
+        icon: "https://claude.ai/favicon.ico",
       },
     });
   });
@@ -157,6 +158,7 @@ describe("Claude Code formatter", () => {
       { language: "zh" },
     );
 
-    expect(formatted.notification.title).toBe("任务已完成");
+    expect(formatted.kind).toBe("completed");
+    expect(formatted.notification.group).toBe("Claude Code");
   });
 });

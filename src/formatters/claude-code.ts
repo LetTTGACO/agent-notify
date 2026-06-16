@@ -9,6 +9,7 @@ import {
 } from "../core/language.js";
 
 const MAX_BODY_LENGTH = 80;
+const CLAUDE_CODE_ICON_URL = "https://claude.ai/favicon.ico";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -62,11 +63,11 @@ function questionTitle(language: NotificationLanguage): string {
 }
 
 function completedTitle(language: NotificationLanguage): string {
-  return language === "zh" ? "任务已完成" : "Task complete";
+  return language === "zh" ? "待审阅" : "Ready to review";
 }
 
 function completedBody(language: NotificationLanguage): string {
-  return language === "zh" ? "可以查看结果了" : "Ready to review";
+  return language === "zh" ? "看看结果或下一步" : "Review results or next steps";
 }
 
 function failedTitle(language: NotificationLanguage): string {
@@ -125,6 +126,7 @@ export function formatClaudeCodeEvent(
         body: notificationMessage(raw, language),
         urgency: "time_sensitive",
         group: "Claude Code",
+        icon: CLAUDE_CODE_ICON_URL,
       },
     };
   }
@@ -140,6 +142,7 @@ export function formatClaudeCodeEvent(
         body: completedBody(language),
         urgency: "time_sensitive",
         group: "Claude Code",
+        icon: CLAUDE_CODE_ICON_URL,
       },
     };
   }
@@ -155,6 +158,7 @@ export function formatClaudeCodeEvent(
         body: failureMessage(raw, language),
         urgency: "time_sensitive",
         group: "Claude Code",
+        icon: CLAUDE_CODE_ICON_URL,
       },
     };
   }

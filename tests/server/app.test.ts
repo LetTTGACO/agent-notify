@@ -115,6 +115,7 @@ describe("server app", () => {
       body: "Claude needs permission to use Bash",
       urgency: "time_sensitive",
       group: "Claude Code",
+      icon: "https://claude.ai/favicon.ico",
     });
   });
 
@@ -347,12 +348,11 @@ describe("server app", () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ ok: true });
-    expect(mockProvider.send).toHaveBeenCalledWith({
-      title: "Task complete",
-      body: "Ready to review",
+    expect(mockProvider.send).toHaveBeenCalledWith(expect.objectContaining({
       urgency: "time_sensitive",
       group: "Claude Code",
-    });
+      icon: "https://claude.ai/favicon.ico",
+    }));
   });
 
   it("clears Claude Code completion state on StopFailure and sends failure notification", async () => {
@@ -404,6 +404,7 @@ describe("server app", () => {
       body: "API Error: quota exceeded",
       urgency: "time_sensitive",
       group: "Claude Code",
+      icon: "https://claude.ai/favicon.ico",
     });
   });
 
