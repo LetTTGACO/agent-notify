@@ -154,7 +154,7 @@ cp examples/opencode/agent-notify.ts ~/.config/opencode/plugins/agent-notify.ts
 
 ```bash
 mkdir -p .opencode/plugins
-cp /Users/1874w/@1874/agent-notify/examples/opencode/agent-notify.ts .opencode/plugins/agent-notify.ts
+cp /ABS/PATH/agent-notify/examples/opencode/agent-notify.ts .opencode/plugins/agent-notify.ts
 ```
 
 注意：第二种命令要在你准备用 OpenCode 工作的目标项目里执行。
@@ -181,7 +181,7 @@ mkdir -p ~/.config/opencode
   "token": "my-long-random-token",
   "timeoutMs": 2000,
   "completionMinSeconds": 120,
-  "debugLogPath": "/Users/1874w/.config/opencode/agent-notify-debug.jsonl"
+  "debugLogPath": "/ABS/PATH/.config/opencode/agent-notify-debug.jsonl"
 }
 ```
 
@@ -265,17 +265,17 @@ pnpm dev
 创建配置目录：
 
 ```bash
-mkdir -p ~/.config/claude-code
+mkdir -p ~/.config/agent-notify
 ```
 
-创建 `~/.config/claude-code/agent-notify.json`：
+创建 `~/.config/agent-notify/claude-code.json`：
 
 ```json
 {
   "serverUrl": "http://127.0.0.1:8787",
   "token": "my-long-random-token",
   "timeoutMs": 2000,
-  "debugLogPath": "/Users/1874w/.config/claude-code/agent-notify-debug.jsonl"
+  "debugLogPath": "/ABS/PATH/.config/agent-notify/claude-code-debug.jsonl"
 }
 ```
 
@@ -295,27 +295,30 @@ Claude Code adapter 配置里就填：
 
 `debugLogPath` 是可选的。建议刚接入时先保留，方便确认 Claude Code hook 是否真的触发了。
 
-### 3. 找到 adapter 文件的绝对路径
+### 3. 安装 Claude Code adapter 文件
+
+推荐把 adapter 复制到稳定的 AgentNotify 配置目录，再让 Claude Code hooks 指向这个复制后的文件。这样仓库切分支、更新 examples 或移动项目目录时，Claude Code 配置不会跟着失效。
 
 在 AgentNotify 项目目录里执行：
 
 ```bash
-pwd
+mkdir -p ~/.config/agent-notify
+cp examples/claude-code/agent-notify.mjs ~/.config/agent-notify/agent-notify.mjs
 ```
 
-假设输出是：
+然后确认复制后的文件存在：
 
-```text
-/Users/1874w/@1874/agent-notify
+```bash
+ls ~/.config/agent-notify/agent-notify.mjs
 ```
 
-那么 Claude Code adapter 的绝对路径就是：
+Claude Code settings 里建议使用展开后的绝对路径，而不是 `~`。你可以用下面的命令查看：
 
-```text
-/Users/1874w/@1874/agent-notify/examples/claude-code/agent-notify.mjs
+```bash
+printf '%s\n' "$HOME/.config/agent-notify/agent-notify.mjs"
 ```
 
-后面的 hook 配置里，把 `/ABS/PATH/examples/claude-code/agent-notify.mjs` 换成你自己的绝对路径。
+后面的 hook 配置里，把 `/ABS/PATH/.config/agent-notify/agent-notify.mjs` 换成这条命令输出的路径。
 
 ### 4. 配置 Claude Code hooks
 
@@ -329,7 +332,7 @@ pwd
         "hooks": [
           {
             "type": "command",
-            "command": "node /ABS/PATH/examples/claude-code/agent-notify.mjs"
+            "command": "node /ABS/PATH/.config/agent-notify/agent-notify.mjs"
           }
         ]
       }
@@ -339,7 +342,7 @@ pwd
         "hooks": [
           {
             "type": "command",
-            "command": "node /ABS/PATH/examples/claude-code/agent-notify.mjs"
+            "command": "node /ABS/PATH/.config/agent-notify/agent-notify.mjs"
           }
         ]
       }
@@ -349,7 +352,7 @@ pwd
         "hooks": [
           {
             "type": "command",
-            "command": "node /ABS/PATH/examples/claude-code/agent-notify.mjs"
+            "command": "node /ABS/PATH/.config/agent-notify/agent-notify.mjs"
           }
         ]
       }
@@ -359,7 +362,7 @@ pwd
         "hooks": [
           {
             "type": "command",
-            "command": "node /ABS/PATH/examples/claude-code/agent-notify.mjs"
+            "command": "node /ABS/PATH/.config/agent-notify/agent-notify.mjs"
           }
         ]
       }
@@ -388,13 +391,13 @@ pnpm dev
 然后可以用一条手动 hook payload 测试 adapter 是否能连到服务端。把命令里的 adapter 路径换成你的绝对路径：
 
 ```bash
-printf '{"hook_event_name":"Notification","notification_type":"idle_prompt","session_id":"manual_test","message":"AgentNotify manual test"}' | node /ABS/PATH/examples/claude-code/agent-notify.mjs
+printf '{"hook_event_name":"Notification","notification_type":"idle_prompt","session_id":"manual_test","message":"AgentNotify manual test"}' | node /ABS/PATH/.config/agent-notify/agent-notify.mjs
 ```
 
 如果配置正确，你应该会收到一条手机通知。也可以看 adapter debug log：
 
 ```bash
-tail -f ~/.config/claude-code/agent-notify-debug.jsonl
+tail -f ~/.config/agent-notify/claude-code-debug.jsonl
 ```
 
 正常转发时，每行里会有类似字段：
@@ -563,7 +566,7 @@ pnpm agent-notify doctor
 如果你配置了 `debugLogPath`，先看插件端是否看到了事件：
 
 ```bash
-tail -f /Users/1874w/.config/opencode/agent-notify-debug.jsonl
+tail -f ~/.config/opencode/agent-notify-debug.jsonl
 ```
 
 每行里的 `forwarded` 表示该事件是否被转发给 AgentNotify。比如 `message.updated` 这类事件可能会出现在插件端日志里，但当前不会触发手机通知。这个文件是本地排障数据，可能包含原始会话信息，不要直接分享；排查完可以手动清理。
@@ -573,22 +576,22 @@ tail -f /Users/1874w/.config/opencode/agent-notify-debug.jsonl
 按顺序检查：
 
 1. AgentNotify 服务是否正在运行。
-2. `~/.config/claude-code/agent-notify.json` 是否存在。
+2. `~/.config/agent-notify/claude-code.json` 是否存在。
 3. `token` 是否等于服务端 `.env` 里 token 的冒号后半段。
-4. Claude Code hooks 里的 command 是否是 `node /绝对路径/examples/claude-code/agent-notify.mjs`。
-5. command 里的路径是否真实存在，可以用 `ls /绝对路径/examples/claude-code/agent-notify.mjs` 检查。
+4. Claude Code hooks 里的 command 是否是 `node /绝对路径/.config/agent-notify/agent-notify.mjs`。
+5. command 里的路径是否真实存在，可以用 `ls /绝对路径/.config/agent-notify/agent-notify.mjs` 检查。
 6. Claude Code 是否已经重启并重新读取 settings。
 
 先用手动 payload 测试 adapter：
 
 ```bash
-printf '{"hook_event_name":"Notification","notification_type":"idle_prompt","session_id":"manual_debug","message":"AgentNotify debug"}' | node /ABS/PATH/examples/claude-code/agent-notify.mjs
+printf '{"hook_event_name":"Notification","notification_type":"idle_prompt","session_id":"manual_debug","message":"AgentNotify debug"}' | node /ABS/PATH/.config/agent-notify/agent-notify.mjs
 ```
 
 再看 adapter debug log：
 
 ```bash
-tail -f ~/.config/claude-code/agent-notify-debug.jsonl
+tail -f ~/.config/agent-notify/claude-code-debug.jsonl
 ```
 
 常见情况：
@@ -630,7 +633,7 @@ OpenCode 插件配置应该是：
 日常使用时，可以保持一个终端专门跑 AgentNotify：
 
 ```bash
-cd /Users/1874w/@1874/agent-notify
+cd /ABS/PATH/agent-notify
 pnpm dev
 ```
 

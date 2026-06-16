@@ -1,6 +1,6 @@
 // Claude Code hook adapter: forwards notification-worthy events to agent-notify server.
 // Configure Claude Code command hooks to run this file with node.
-// Required config: ~/.config/claude-code/agent-notify.json.
+// Required config: ~/.config/agent-notify/claude-code.json.
 
 import { appendFileSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";

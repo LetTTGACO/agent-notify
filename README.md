@@ -40,7 +40,7 @@ Copy `examples/opencode/agent-notify.ts` into an OpenCode plugin location and cr
   "token": "dev-token-change-me",
   "timeoutMs": 2000,
   "completionMinSeconds": 120,
-  "debugLogPath": "/Users/1874w/.config/opencode/agent-notify-debug.jsonl"
+  "debugLogPath": "/ABS/PATH/.config/opencode/agent-notify-debug.jsonl"
 }
 ```
 
@@ -80,7 +80,7 @@ Claude Code does not use the OpenCode plugin API. Use a command hook that runs t
         "hooks": [
           {
             "type": "command",
-            "command": "node /ABS/PATH/examples/claude-code/agent-notify.mjs"
+            "command": "node /ABS/PATH/.config/agent-notify/agent-notify.mjs"
           }
         ]
       }
@@ -90,7 +90,7 @@ Claude Code does not use the OpenCode plugin API. Use a command hook that runs t
         "hooks": [
           {
             "type": "command",
-            "command": "node /ABS/PATH/examples/claude-code/agent-notify.mjs"
+            "command": "node /ABS/PATH/.config/agent-notify/agent-notify.mjs"
           }
         ]
       }
@@ -100,7 +100,7 @@ Claude Code does not use the OpenCode plugin API. Use a command hook that runs t
         "hooks": [
           {
             "type": "command",
-            "command": "node /ABS/PATH/examples/claude-code/agent-notify.mjs"
+            "command": "node /ABS/PATH/.config/agent-notify/agent-notify.mjs"
           }
         ]
       }
@@ -110,7 +110,7 @@ Claude Code does not use the OpenCode plugin API. Use a command hook that runs t
         "hooks": [
           {
             "type": "command",
-            "command": "node /ABS/PATH/examples/claude-code/agent-notify.mjs"
+            "command": "node /ABS/PATH/.config/agent-notify/agent-notify.mjs"
           }
         ]
       }
@@ -119,14 +119,14 @@ Claude Code does not use the OpenCode plugin API. Use a command hook that runs t
 }
 ```
 
-Create `~/.config/claude-code/agent-notify.json`:
+Create `~/.config/agent-notify/claude-code.json`:
 
 ```json
 {
   "serverUrl": "http://127.0.0.1:8787",
   "token": "dev-token-change-me",
   "timeoutMs": 2000,
-  "debugLogPath": "/Users/1874w/.config/claude-code/agent-notify-debug.jsonl"
+  "debugLogPath": "/ABS/PATH/.config/agent-notify/claude-code-debug.jsonl"
 }
 ```
 
