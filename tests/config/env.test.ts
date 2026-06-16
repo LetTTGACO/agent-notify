@@ -51,6 +51,35 @@ describe("config parsing", () => {
     ).toThrow();
   });
 
+  it("defaults Claude Code completion threshold to disabled", () => {
+    const config = parseConfig({
+      AGENT_NOTIFY_TOKENS: "macbook:abc",
+      BARK_ENDPOINT: "https://api.day.app/key",
+    });
+
+    expect(config.claudeCompletionMinSeconds).toBe(0);
+  });
+
+  it("parses Claude Code completion threshold", () => {
+    const config = parseConfig({
+      AGENT_NOTIFY_TOKENS: "macbook:abc",
+      BARK_ENDPOINT: "https://api.day.app/key",
+      AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS: "120",
+    });
+
+    expect(config.claudeCompletionMinSeconds).toBe(120);
+  });
+
+  it("rejects negative Claude Code completion threshold", () => {
+    expect(() =>
+      parseConfig({
+        AGENT_NOTIFY_TOKENS: "macbook:abc",
+        BARK_ENDPOINT: "https://api.day.app/key",
+        AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS: "-1",
+      }),
+    ).toThrow();
+  });
+
   it("loads missing env vars from a .env file", () => {
     const tmp = mkdtempSync(join(tmpdir(), "agent-notify-"));
     writeFileSync(join(tmp, ".env"), "AGENT_NOTIFY_TOKENS=macbook:abc\nBARK_ENDPOINT=https://api.day.app/key\n# comment\n\nEMPTY=\n");

@@ -47,6 +47,7 @@ export interface AppConfig {
   barkEndpoint: string;
   logPath: string;
   logRaw: boolean;
+  claudeCompletionMinSeconds: number;
 }
 
 export function parseTokenList(value: string): NamedToken[] {
@@ -84,6 +85,10 @@ const envSchema = z.object({
   AGENT_NOTIFY_LOG_RAW: z
     .enum(["true", "false", "1", "0"])
     .default("false"),
+  AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS: z.coerce
+    .number()
+    .nonnegative()
+    .default(0),
 });
 
 export function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
@@ -100,5 +105,7 @@ export function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
     logRaw:
       parsed.AGENT_NOTIFY_LOG_RAW === "true" ||
       parsed.AGENT_NOTIFY_LOG_RAW === "1",
+    claudeCompletionMinSeconds:
+      parsed.AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS,
   };
 }
