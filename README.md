@@ -2,6 +2,8 @@
 
 AgentNotify is a personal notification hub for AI coding agents. The MVP receives raw OpenCode hook events, formats short action-focused notifications on the server, logs safe event summaries, and sends Bark notifications to iPhone and Apple Watch.
 
+For a step-by-step Chinese guide, see [AgentNotify 人类使用手册](docs/user-manual.md).
+
 ## MVP Scope
 
 - OpenCode plugin example
