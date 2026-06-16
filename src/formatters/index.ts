@@ -4,6 +4,7 @@ import {
   formatClaudeCodeEvent,
   type FormatterOptions,
 } from "./claude-code.js";
+import { formatCodexEvent } from "./codex.js";
 import { formatOpenCodeEvent } from "./opencode.js";
 
 export function formatIncomingEvent(
@@ -12,6 +13,9 @@ export function formatIncomingEvent(
 ): FormattedAgentEvent {
   if (event.agent === "claude-code") {
     return formatClaudeCodeEvent(event, options);
+  }
+  if (event.agent === "codex") {
+    return formatCodexEvent(event, options);
   }
   return formatOpenCodeEvent(event, options);
 }
