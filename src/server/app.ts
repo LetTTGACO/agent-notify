@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { randomUUID } from "node:crypto";
 import type { NamedToken } from "../config/env.js";
+import type { NotificationLanguage } from "../core/language.js";
 import { parseIncomingAgentEvent } from "../core/incoming-event.js";
 import { EventFormatError } from "../core/formatted-event.js";
 import { formatIncomingEvent } from "../formatters/index.js";
@@ -13,6 +14,7 @@ export interface CreateAppOptions {
   provider: NotificationProvider;
   logPath: string;
   logRaw: boolean;
+  language: NotificationLanguage;
 }
 
 export function createApp(options: CreateAppOptions): Hono {
@@ -63,7 +65,7 @@ export function createApp(options: CreateAppOptions): Hono {
 
     let formatted;
     try {
-      formatted = formatIncomingEvent(incoming);
+      formatted = formatIncomingEvent(incoming, { language: options.language });
     } catch (error) {
       await safeLog({
         receivedAt,

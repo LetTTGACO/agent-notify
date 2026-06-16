@@ -15,6 +15,7 @@ function appOptions(mockProvider = provider()) {
     provider: mockProvider,
     logPath: "./data/test.jsonl",
     logRaw: false,
+    language: "en" as const,
   };
 }
 
@@ -62,6 +63,32 @@ describe("server app", () => {
     expect(await res.json()).toMatchObject({ ok: true });
     expect(mockProvider.send).toHaveBeenCalledWith({
       title: "Approve bash",
+      body: "pnpm test",
+      urgency: "normal",
+      group: "OpenCode",
+      icon: "https://opencode.ai/apple-touch-icon.png",
+    });
+  });
+
+  it("sends Chinese formatted notifications when configured", async () => {
+    const mockProvider = provider();
+    const app = createApp({
+      ...appOptions(mockProvider),
+      language: "zh",
+    });
+
+    const res = await app.request("/events", {
+      method: "POST",
+      body: JSON.stringify(permissionEnvelope),
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer secret",
+      },
+    });
+
+    expect(res.status).toBe(200);
+    expect(mockProvider.send).toHaveBeenCalledWith({
+      title: "批准运行命令",
       body: "pnpm test",
       urgency: "normal",
       group: "OpenCode",

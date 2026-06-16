@@ -1,6 +1,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
+import {
+  defaultNotificationLanguage,
+  notificationLanguages,
+  type NotificationLanguage,
+} from "../core/language.js";
 
 export function loadDotenv(): void {
   try {
@@ -38,6 +43,7 @@ export interface AppConfig {
   port: number;
   tokens: NamedToken[];
   provider: "bark";
+  language: NotificationLanguage;
   barkEndpoint: string;
   logPath: string;
   logRaw: boolean;
@@ -70,6 +76,9 @@ const envSchema = z.object({
   AGENT_NOTIFY_PORT: z.coerce.number().int().positive().default(8787),
   AGENT_NOTIFY_TOKENS: z.string().min(1),
   AGENT_NOTIFY_PROVIDER: z.literal("bark").default("bark"),
+  AGENT_NOTIFY_LANGUAGE: z
+    .enum(notificationLanguages)
+    .default(defaultNotificationLanguage),
   BARK_ENDPOINT: z.string().url(),
   AGENT_NOTIFY_LOG_PATH: z.string().default("./data/events.jsonl"),
   AGENT_NOTIFY_LOG_RAW: z
@@ -85,6 +94,7 @@ export function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
     port: parsed.AGENT_NOTIFY_PORT,
     tokens: parseTokenList(parsed.AGENT_NOTIFY_TOKENS),
     provider: parsed.AGENT_NOTIFY_PROVIDER,
+    language: parsed.AGENT_NOTIFY_LANGUAGE,
     barkEndpoint: parsed.BARK_ENDPOINT,
     logPath: parsed.AGENT_NOTIFY_LOG_PATH,
     logRaw:

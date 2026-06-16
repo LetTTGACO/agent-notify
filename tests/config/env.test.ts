@@ -25,9 +25,30 @@ describe("config parsing", () => {
     expect(config.host).toBe("0.0.0.0");
     expect(config.port).toBe(8787);
     expect(config.provider).toBe("bark");
+    expect(config.language).toBe("en");
     expect(config.logPath).toBe("./data/events.jsonl");
     expect(config.logRaw).toBe(false);
     expect("dedupeSeconds" in config).toBe(false);
+  });
+
+  it("parses notification language", () => {
+    const config = parseConfig({
+      AGENT_NOTIFY_TOKENS: "macbook:abc",
+      BARK_ENDPOINT: "https://api.day.app/key",
+      AGENT_NOTIFY_LANGUAGE: "zh",
+    });
+
+    expect(config.language).toBe("zh");
+  });
+
+  it("rejects unsupported notification languages", () => {
+    expect(() =>
+      parseConfig({
+        AGENT_NOTIFY_TOKENS: "macbook:abc",
+        BARK_ENDPOINT: "https://api.day.app/key",
+        AGENT_NOTIFY_LANGUAGE: "fr",
+      }),
+    ).toThrow();
   });
 
   it("loads missing env vars from a .env file", () => {

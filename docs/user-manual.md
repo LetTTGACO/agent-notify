@@ -57,6 +57,7 @@ AGENT_NOTIFY_HOST=0.0.0.0
 AGENT_NOTIFY_PORT=8787
 AGENT_NOTIFY_TOKENS=macbook:dev-token-change-me
 AGENT_NOTIFY_PROVIDER=bark
+AGENT_NOTIFY_LANGUAGE=en
 BARK_ENDPOINT=https://api.day.app/example-device-key
 AGENT_NOTIFY_LOG_PATH=./data/events.jsonl
 AGENT_NOTIFY_LOG_RAW=false
@@ -66,6 +67,7 @@ AGENT_NOTIFY_LOG_RAW=false
 
 - `AGENT_NOTIFY_TOKENS`：服务端允许哪些客户端发事件，格式是 `名称:token`。
 - `BARK_ENDPOINT`：换成你的 Bark endpoint。
+- `AGENT_NOTIFY_LANGUAGE`：通知文案语言，支持 `en` 和 `zh`，默认 `en`。
 
 建议把 `dev-token-change-me` 改成只有你知道的字符串。例如：
 
@@ -198,6 +200,13 @@ opencode
 
 ```text
 Approve bash
+pnpm test
+```
+
+如果 `.env` 设置了 `AGENT_NOTIFY_LANGUAGE=zh`，同一类通知会显示为：
+
+```text
+批准运行命令
 pnpm test
 ```
 

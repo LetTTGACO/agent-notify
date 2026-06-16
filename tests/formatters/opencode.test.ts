@@ -95,6 +95,68 @@ describe("OpenCode formatter", () => {
     });
   });
 
+  it("formats permission.v2.asked in Chinese when requested", () => {
+    const formatted = formatOpenCodeEvent(
+      {
+        agent: "opencode",
+        raw: {
+          id: "evt_zh_1",
+          type: "permission.v2.asked",
+          properties: {
+            id: "perm_zh_1",
+            sessionID: "session_zh_1",
+            action: "delete",
+            resources: ["src/old-file.ts"],
+          },
+        },
+      },
+      { language: "zh" },
+    );
+
+    expect(formatted.notification.title).toBe("批准删除文件");
+    expect(formatted.notification.body).toBe("src/old-file.ts");
+  });
+
+  it("formats permission fallback text in Chinese", () => {
+    const formatted = formatOpenCodeEvent(
+      {
+        agent: "opencode",
+        raw: {
+          id: "evt_zh_2",
+          type: "permission.asked",
+          properties: {
+            id: "perm_zh_2",
+            sessionID: "session_zh_2",
+            permission: "edit",
+          },
+        },
+      },
+      { language: "zh" },
+    );
+
+    expect(formatted.notification.title).toBe("批准编辑文件");
+    expect(formatted.notification.body).toBe("请求权限");
+  });
+
+  it("formats session.error fallback in Chinese", () => {
+    const formatted = formatOpenCodeEvent(
+      {
+        agent: "opencode",
+        raw: {
+          id: "evt_zh_3",
+          type: "session.error",
+          properties: {
+            sessionID: "session_zh_3",
+          },
+        },
+      },
+      { language: "zh" },
+    );
+
+    expect(formatted.notification.title).toBe("失败");
+    expect(formatted.notification.body).toBe("会话错误");
+  });
+
   it("truncates long body text to one line", () => {
     const formatted = formatOpenCodeEvent({
       agent: "opencode",
@@ -131,20 +193,23 @@ describe("OpenCode formatter", () => {
   });
 
   it("dispatches incoming events to the OpenCode formatter", () => {
-    const formatted = formatIncomingEvent({
-      agent: "opencode",
-      raw: {
-        id: "evt_6",
-        type: "permission.v2.asked",
-        properties: {
-          id: "perm_6",
-          sessionID: "session_6",
-          action: "webfetch",
-          resources: ["https://example.com"],
+    const formatted = formatIncomingEvent(
+      {
+        agent: "opencode",
+        raw: {
+          id: "evt_6",
+          type: "permission.v2.asked",
+          properties: {
+            id: "perm_6",
+            sessionID: "session_6",
+            action: "webfetch",
+            resources: ["https://example.com"],
+          },
         },
       },
-    });
+      { language: "zh" },
+    );
 
-    expect(formatted.notification.title).toBe("Approve webfetch");
+    expect(formatted.notification.title).toBe("批准网页访问");
   });
 });

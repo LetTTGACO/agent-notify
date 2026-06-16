@@ -65,6 +65,7 @@ The server formats the raw event into a short notification. The adapter is fail-
 
 ```bash
 export AGENT_NOTIFY_TOKENS=macbook:dev-token-change-me
+export AGENT_NOTIFY_LANGUAGE=en # optional: zh
 export BARK_ENDPOINT=https://api.day.app/example-device-key
 docker compose -f deploy/docker/docker-compose.yml up --build
 ```

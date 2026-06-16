@@ -10,6 +10,7 @@ const app = createApp({
   provider,
   logPath: config.logPath,
   logRaw: config.logRaw,
+  language: config.language,
 });
 
 serve({

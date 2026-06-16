@@ -3,11 +3,33 @@ import {
   EventFormatError,
   type FormattedAgentEvent,
 } from "../core/formatted-event.js";
+import {
+  defaultNotificationLanguage,
+  type NotificationLanguage,
+} from "../core/language.js";
 
 const MAX_BODY_LENGTH = 80;
 const OPENCODE_ICON_URL = "https://opencode.ai/apple-touch-icon.png";
 
 type UnknownRecord = Record<string, unknown>;
+
+export interface FormatterOptions {
+  language?: NotificationLanguage;
+}
+
+const zhActionLabels: Record<string, string> = {
+  bash: "运行命令",
+  edit: "编辑文件",
+  delete: "删除文件",
+  remove: "删除文件",
+  webfetch: "网页访问",
+  websearch: "网页搜索",
+  permission: "权限",
+};
+
+function languageFromOptions(options?: FormatterOptions): NotificationLanguage {
+  return options?.language ?? defaultNotificationLanguage;
+}
 
 function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -68,16 +90,36 @@ function requireEventType(raw: UnknownRecord): string {
   return type;
 }
 
+function permissionTitle(action: string, language: NotificationLanguage): string {
+  if (language === "en") return `Approve ${action}`;
+  const label = zhActionLabels[action.toLowerCase()];
+  return label ? `批准${label}` : `批准 ${action}`;
+}
+
+function permissionFallback(language: NotificationLanguage): string {
+  return language === "zh" ? "请求权限" : "Permission requested";
+}
+
+function failedTitle(language: NotificationLanguage): string {
+  return language === "zh" ? "失败" : "Failed";
+}
+
+function sessionErrorFallback(language: NotificationLanguage): string {
+  return language === "zh" ? "会话错误" : "Session error";
+}
+
 export function formatOpenCodeEvent(
   event: IncomingAgentEvent,
+  options?: FormatterOptions,
 ): FormattedAgentEvent {
+  const language = languageFromOptions(options);
   const raw = requireRawRecord(event.raw);
   const sourceEvent = requireEventType(raw);
   const properties = getProperties(raw);
 
   if (sourceEvent === "permission.v2.asked") {
     const action = getString(properties.action) ?? "permission";
-    const body = summarizeList(properties.resources) || "Permission requested";
+    const body = summarizeList(properties.resources) || permissionFallback(language);
 
     return {
       agent: event.agent,
@@ -85,7 +127,7 @@ export function formatOpenCodeEvent(
       sourceEvent,
       sessionId: getString(properties.sessionID),
       notification: {
-        title: `Approve ${action}`,
+        title: permissionTitle(action, language),
         body,
         urgency: "normal",
         group: "OpenCode",
@@ -96,7 +138,7 @@ export function formatOpenCodeEvent(
 
   if (sourceEvent === "permission.asked") {
     const permission = getString(properties.permission) ?? "permission";
-    const body = summarizeList(properties.patterns) || "Permission requested";
+    const body = summarizeList(properties.patterns) || permissionFallback(language);
 
     return {
       agent: event.agent,
@@ -104,7 +146,7 @@ export function formatOpenCodeEvent(
       sourceEvent,
       sessionId: getString(properties.sessionID),
       notification: {
-        title: `Approve ${permission}`,
+        title: permissionTitle(permission, language),
         body,
         urgency: "normal",
         group: "OpenCode",
@@ -119,7 +161,7 @@ export function formatOpenCodeEvent(
       errorMessage(raw.error) ??
       getString(properties.message) ??
       getString(raw.message) ??
-      "Session error";
+      sessionErrorFallback(language);
 
     return {
       agent: event.agent,
@@ -127,7 +169,7 @@ export function formatOpenCodeEvent(
       sourceEvent,
       sessionId: getString(properties.sessionID) ?? getString(raw.sessionID),
       notification: {
-        title: "Failed",
+        title: failedTitle(language),
         body: truncate(body),
         urgency: "time_sensitive",
         group: "OpenCode",
