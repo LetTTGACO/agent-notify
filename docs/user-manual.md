@@ -73,7 +73,7 @@ AGENT_NOTIFY_LOG_RAW=false
 AGENT_NOTIFY_TOKENS=macbook:my-long-random-token
 ```
 
-后面配置 OpenCode 插件时，`AGENT_NOTIFY_TOKEN` 必须填同一个 token，也就是这里冒号后面的部分。
+后面配置 OpenCode 插件时，`agent-notify.json` 里的 `token` 必须填同一个 token，也就是这里冒号后面的部分。
 
 ## 第三步：启动 AgentNotify
 
@@ -146,34 +146,37 @@ cp /Users/1874w/@1874/agent-notify/examples/opencode/agent-notify.ts .opencode/p
 
 注意：第二种命令要在你准备用 OpenCode 工作的目标项目里执行。
 
-## 第六步：让 OpenCode 知道 AgentNotify 的地址和 token
+## 第六步：配置 OpenCode 插件
 
-OpenCode 插件会读取这几个环境变量：
+OpenCode 插件会读取这个配置文件：
+
+```text
+~/.config/opencode/agent-notify.json
+```
+
+创建配置文件：
 
 ```bash
-export AGENT_NOTIFY_SERVER_URL=http://127.0.0.1:8787
-export AGENT_NOTIFY_TOKEN=my-long-random-token
-export AGENT_NOTIFY_TIMEOUT_MS=2000
+mkdir -p ~/.config/opencode
+```
+
+文件内容：
+
+```json
+{
+  "serverUrl": "http://127.0.0.1:8787",
+  "token": "my-long-random-token",
+  "timeoutMs": 2000
+}
 ```
 
 其中：
 
-- `AGENT_NOTIFY_SERVER_URL`：AgentNotify 服务地址。
-- `AGENT_NOTIFY_TOKEN`：必须等于 `.env` 里 `AGENT_NOTIFY_TOKENS` 的 token 部分。
-- `AGENT_NOTIFY_TIMEOUT_MS`：插件请求超时时间，默认 2000 毫秒。
+- `serverUrl`：AgentNotify 服务地址。
+- `token`：必须等于 `.env` 里 `AGENT_NOTIFY_TOKENS` 的 token 部分。
+- `timeoutMs`：插件请求超时时间，单位是毫秒。
 
-最容易踩坑的地方是：这些环境变量必须存在于启动 OpenCode 的那个 shell 里。
-
-推荐流程：
-
-```bash
-export AGENT_NOTIFY_SERVER_URL=http://127.0.0.1:8787
-export AGENT_NOTIFY_TOKEN=my-long-random-token
-export AGENT_NOTIFY_TIMEOUT_MS=2000
-opencode
-```
-
-如果你想长期使用，可以把这些 `export` 写进你的 shell 配置文件，例如 `~/.zshrc`，然后重新打开终端。
+如果这个文件不存在、JSON 写坏了，或者缺少字段，插件会初始化失败。OpenCode 会把插件失败限制在插件边界内，不会因为 AgentNotify 配错就阻塞你的正常 OpenCode 工作。
 
 ## 第七步：实际验证 OpenCode 通知
 
@@ -183,7 +186,7 @@ opencode
 pnpm dev
 ```
 
-然后从带有环境变量的终端启动 OpenCode：
+然后启动 OpenCode：
 
 ```bash
 opencode
@@ -254,11 +257,14 @@ Docker 默认把服务暴露到宿主机的 `8787` 端口：
 http://127.0.0.1:8787
 ```
 
-OpenCode 侧仍然使用：
+OpenCode 侧仍然使用同一个插件配置文件：
 
-```bash
-export AGENT_NOTIFY_SERVER_URL=http://127.0.0.1:8787
-export AGENT_NOTIFY_TOKEN=my-long-random-token
+```json
+{
+  "serverUrl": "http://127.0.0.1:8787",
+  "token": "my-long-random-token",
+  "timeoutMs": 2000
+}
 ```
 
 ## 日志在哪里
@@ -330,8 +336,8 @@ pnpm agent-notify doctor
 
 按顺序检查：
 
-1. 你是否从带有 `AGENT_NOTIFY_TOKEN` 的终端启动了 OpenCode。
-2. `AGENT_NOTIFY_TOKEN` 是否等于服务端 `.env` 里 token 的冒号后半段。
+1. `~/.config/opencode/agent-notify.json` 是否存在。
+2. `token` 是否等于服务端 `.env` 里 token 的冒号后半段。
 3. 插件文件是否复制到了正确目录。
 4. AgentNotify 服务是否正在运行。
 5. 你触发的是否是当前支持的事件：权限请求或会话错误。
@@ -344,10 +350,14 @@ pnpm agent-notify doctor
 AGENT_NOTIFY_TOKENS=macbook:my-long-random-token
 ```
 
-OpenCode 侧应该是：
+OpenCode 插件配置应该是：
 
-```bash
-export AGENT_NOTIFY_TOKEN=my-long-random-token
+```json
+{
+  "serverUrl": "http://127.0.0.1:8787",
+  "token": "my-long-random-token",
+  "timeoutMs": 2000
+}
 ```
 
 不要把 `macbook:` 一起填进去。
@@ -368,11 +378,9 @@ cd /Users/1874w/@1874/agent-notify
 pnpm dev
 ```
 
-另一个终端进入你真正工作的代码项目，导出环境变量并启动 OpenCode：
+另一个终端进入你真正工作的代码项目，直接启动 OpenCode：
 
 ```bash
-export AGENT_NOTIFY_SERVER_URL=http://127.0.0.1:8787
-export AGENT_NOTIFY_TOKEN=my-long-random-token
 opencode
 ```
 

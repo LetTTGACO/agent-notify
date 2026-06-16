@@ -32,12 +32,14 @@ pnpm agent-notify test
 
 ## OpenCode Adapter
 
-Copy `examples/opencode/agent-notify.ts` into an OpenCode plugin location and set:
+Copy `examples/opencode/agent-notify.ts` into an OpenCode plugin location and create `~/.config/opencode/agent-notify.json`:
 
-```bash
-export AGENT_NOTIFY_SERVER_URL=http://127.0.0.1:8787
-export AGENT_NOTIFY_TOKEN=dev-token-change-me
-export AGENT_NOTIFY_TIMEOUT_MS=2000
+```json
+{
+  "serverUrl": "http://127.0.0.1:8787",
+  "token": "dev-token-change-me",
+  "timeoutMs": 2000
+}
 ```
 
 The adapter only forwards notification-worthy OpenCode hooks:
