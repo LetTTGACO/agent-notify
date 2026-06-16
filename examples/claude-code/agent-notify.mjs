@@ -73,7 +73,7 @@ export async function sendClaudeCodeEvent(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    await fetchImpl(`${serverUrl.replace(/\/$/, "")}/events`, {
+    const response = await fetchImpl(`${serverUrl.replace(/\/$/, "")}/events`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -82,7 +82,7 @@ export async function sendClaudeCodeEvent(
       body: JSON.stringify({ agent: "claude-code", raw }),
       signal: controller.signal,
     });
-    return true;
+    return response.ok;
   } catch {
     return false;
   } finally {

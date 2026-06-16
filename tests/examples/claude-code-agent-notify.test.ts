@@ -49,16 +49,18 @@ describe("Claude Code adapter example", () => {
   it("posts forwarded events to the existing /events endpoint", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
 
-    await adapter.sendClaudeCodeEvent(
-      "http://127.0.0.1:8787/",
-      "secret",
-      2_000,
-      {
-        hook_event_name: "Notification",
-        session_id: "claude_session_5",
-      },
-      fetchMock,
-    );
+    await expect(
+      adapter.sendClaudeCodeEvent(
+        "http://127.0.0.1:8787/",
+        "secret",
+        2_000,
+        {
+          hook_event_name: "Notification",
+          session_id: "claude_session_5",
+        },
+        fetchMock,
+      ),
+    ).resolves.toBe(true);
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8787/events",
@@ -77,5 +79,22 @@ describe("Claude Code adapter example", () => {
         }),
       }),
     );
+  });
+
+  it("reports server rejection as an unsent event", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 401 }));
+
+    await expect(
+      adapter.sendClaudeCodeEvent(
+        "http://127.0.0.1:8787/",
+        "secret",
+        2_000,
+        {
+          hook_event_name: "Notification",
+          session_id: "claude_session_5",
+        },
+        fetchMock,
+      ),
+    ).resolves.toBe(false);
   });
 });
