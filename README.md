@@ -1,10 +1,11 @@
 # AgentNotify
 
-AgentNotify is a personal notification hub for AI coding agents. The MVP receives normalized Agent events, dedupes and logs them, and sends Bark notifications to iPhone and Apple Watch.
+AgentNotify is a personal notification hub for AI coding agents. The MVP receives raw OpenCode hook events, formats short action-focused notifications on the server, logs safe event summaries, and sends Bark notifications to iPhone and Apple Watch.
 
 ## MVP Scope
 
-- OpenCode adapter example
+- OpenCode plugin example
+- Server-side OpenCode formatter
 - Bark provider
 - Hono `/events` and `/health`
 - JSONL logs
@@ -37,7 +38,24 @@ export AGENT_NOTIFY_TOKEN=dev-token-change-me
 export AGENT_NOTIFY_TIMEOUT_MS=2000
 ```
 
-The adapter is fail-safe: server errors do not block OpenCode.
+The adapter only forwards notification-worthy OpenCode hooks:
+
+- `permission.v2.asked`
+- `permission.asked`
+- `session.error`
+
+The adapter sends the raw OpenCode event to the server as:
+
+```json
+{
+  "agent": "opencode",
+  "raw": {
+    "type": "permission.v2.asked"
+  }
+}
+```
+
+The server formats the raw event into a short notification. The adapter is fail-safe: server errors do not block OpenCode.
 
 ## Docker
 
