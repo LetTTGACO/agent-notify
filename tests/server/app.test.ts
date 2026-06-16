@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { readFile, rm } from "node:fs/promises";
 import { createApp } from "../../src/server/app.js";
 import { ClaudeCodeSessionPolicy } from "../../src/server/claude-code-session-policy.js";
 import type { NotificationProvider } from "../../src/providers/types.js";
@@ -36,6 +37,20 @@ const permissionEnvelope = {
 };
 
 describe("server app", () => {
+  const trackedLogPaths: string[] = [];
+
+  afterEach(async () => {
+    while (trackedLogPaths.length > 0) {
+      const path = trackedLogPaths.pop();
+      if (!path) break;
+      try {
+        await rm(path, { force: true });
+      } catch {
+        // Ignore cleanup failures; the data/ directory is gitignored.
+      }
+    }
+  });
+
   it("rejects missing auth", async () => {
     const app = createApp(appOptions());
 
@@ -389,6 +404,64 @@ describe("server app", () => {
       body: "API Error: quota exceeded",
       urgency: "time_sensitive",
       group: "Claude Code",
+    });
+  });
+
+  it("logs a JSONL suppressed entry for Claude Code UserPromptSubmit", async () => {
+    const logPath = `./data/test-suppressed-${Date.now()}.jsonl`;
+    trackedLogPaths.push(logPath);
+
+    const mockProvider = provider();
+    const app = createApp({
+      ...appOptions(mockProvider),
+      logPath,
+      claudeCodeSessionPolicy: new ClaudeCodeSessionPolicy({
+        completionMinSeconds: 120,
+        nowMs: () => 1_000,
+      }),
+    });
+
+    const sessionId = `claude_prompt_${Date.now()}`;
+    const res = await app.request("/events", {
+      method: "POST",
+      body: JSON.stringify({
+        agent: "claude-code",
+        raw: {
+          hook_event_name: "UserPromptSubmit",
+          session_id: sessionId,
+        },
+      }),
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer secret",
+      },
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, notified: false });
+    expect(mockProvider.send).not.toHaveBeenCalled();
+
+    const contents = await readFile(logPath, "utf8");
+    const lines = contents
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+    const suppressedLine = lines
+      .map((line) => JSON.parse(line) as Record<string, unknown>)
+      .find(
+        (entry) =>
+          entry.status === "suppressed" &&
+          entry.kind === "state" &&
+          entry.sourceEvent === "UserPromptSubmit",
+      );
+
+    expect(suppressedLine).toMatchObject({
+      status: "suppressed",
+      kind: "state",
+      agent: "claude-code",
+      sourceEvent: "UserPromptSubmit",
+      sessionId,
+      reason: "state_recorded",
     });
   });
 });

@@ -107,6 +107,61 @@ describe("ClaudeCodeSessionPolicy", () => {
     expect(policy.sessionCount()).toBe(0);
   });
 
+  it("suppresses Stop with completion_disabled when threshold is zero", () => {
+    const policy = new ClaudeCodeSessionPolicy({
+      completionMinSeconds: 0,
+      nowMs: () => 1_000,
+    });
+
+    policy.apply(claudeEvent("UserPromptSubmit"), "macbook");
+
+    expect(policy.apply(claudeEvent("Stop"), "macbook")).toEqual({
+      action: "suppress",
+      reason: "completion_disabled",
+      sourceEvent: "Stop",
+      sessionId: "session_1",
+    });
+    expect(policy.sessionCount()).toBe(0);
+  });
+
+  it("suppresses UserPromptSubmit without session_id and records no state", () => {
+    const policy = new ClaudeCodeSessionPolicy({
+      completionMinSeconds: 120,
+      nowMs: () => 1_000,
+    });
+
+    expect(
+      policy.apply(
+        { agent: "claude-code", raw: { hook_event_name: "UserPromptSubmit" } },
+        "macbook",
+      ),
+    ).toEqual({
+      action: "suppress",
+      reason: "missing_session",
+      sourceEvent: "UserPromptSubmit",
+    });
+    expect(policy.sessionCount()).toBe(0);
+  });
+
+  it("suppresses Stop without session_id and records no state", () => {
+    const policy = new ClaudeCodeSessionPolicy({
+      completionMinSeconds: 120,
+      nowMs: () => 1_000,
+    });
+
+    expect(
+      policy.apply(
+        { agent: "claude-code", raw: { hook_event_name: "Stop" } },
+        "macbook",
+      ),
+    ).toEqual({
+      action: "suppress",
+      reason: "missing_session",
+      sourceEvent: "Stop",
+    });
+    expect(policy.sessionCount()).toBe(0);
+  });
+
   it("drops oldest sessions above the max session cap", () => {
     let nowMs = 1_000;
     const policy = new ClaudeCodeSessionPolicy({
