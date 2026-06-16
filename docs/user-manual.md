@@ -1,13 +1,13 @@
 # AgentNotify 人类使用手册
 
-这份手册写给“想在 OpenCode 里收到手机通知”的人。你不需要先读源码；照着走一遍，就能把 OpenCode 的关键事件转发到 AgentNotify，再由 Bark 推送到 iPhone 或 Apple Watch。
+这份手册写给“想在 OpenCode 或 Claude Code 里收到手机通知”的人。你不需要先读源码；照着走一遍，就能把 AI coding agent 的关键事件转发到 AgentNotify，再由 Bark 推送到 iPhone 或 Apple Watch。
 
 ## 这个项目是做什么的
 
 AgentNotify 是一个本地通知中转站：
 
-1. OpenCode 运行到需要你处理的事件，例如请求命令权限或会话报错。
-2. OpenCode 插件把事件发到本机的 AgentNotify 服务。
+1. OpenCode 或 Claude Code 运行到需要你处理的事件，例如请求命令权限、等待输入、会话完成或会话报错。
+2. 本地 adapter 把事件发到本机的 AgentNotify 服务。
 3. AgentNotify 把事件格式化成简短通知。
 4. AgentNotify 调用 Bark，把通知推到你的 iPhone / Apple Watch。
 
@@ -20,6 +20,13 @@ AgentNotify 是一个本地通知中转站：
 - `session.idle`：仅在插件配置了 `completionMinSeconds` 且本轮耗时达到阈值时转发
 
 也就是说，它不会把 OpenCode 的每一步都推给你，只会推需要你注意的事件。
+
+Claude Code 侧支持这些 hooks：
+
+- `UserPromptSubmit`：只用于服务端记录本轮开始时间，不推送手机通知
+- `Notification`：Claude Code 需要你注意时推送
+- `Stop`：长任务达到服务端阈值后推送完成通知
+- `StopFailure`：任务失败或限额错误时推送
 
 ## 你需要准备什么
 
@@ -71,6 +78,7 @@ AGENT_NOTIFY_LOG_RAW=false
 - `AGENT_NOTIFY_TOKENS`：服务端允许哪些客户端发事件，格式是 `名称:token`。
 - `BARK_ENDPOINT`：换成你的 Bark endpoint。
 - `AGENT_NOTIFY_LANGUAGE`：通知文案语言，支持 `en` 和 `zh`，默认 `en`。
+- `AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS`：Claude Code 完成通知阈值，单位秒。设为 `0` 表示不推送 Claude Code 完成通知。
 
 建议把 `dev-token-change-me` 改成只有你知道的字符串。例如：
 
@@ -229,23 +237,185 @@ Claude Code 使用 command hooks 调用示例 adapter。这个 adapter 不进入
 它只负责读取 Claude Code hook stdin，并把事件包装成现有 `/events` 请求。
 长任务完成阈值由 AgentNotify 服务端记录和判断。
 
-配置文件：
+### 1. 确认 AgentNotify 服务端配置
+
+先确认 `.env` 里有服务端 token 和 Bark endpoint：
+
+```bash
+AGENT_NOTIFY_TOKENS=macbook:my-long-random-token
+BARK_ENDPOINT=https://api.day.app/你的设备Key
+```
+
+如果你想收到 Claude Code 长任务完成通知，再设置一个阈值。例如任务运行超过 120 秒后，`Stop` 才会推送完成通知：
+
+```bash
+AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS=120
+```
+
+如果设为 `0` 或不配置，Claude Code 的权限、等待输入、失败通知仍然会发送，但不会发送完成通知。
+
+启动服务：
+
+```bash
+pnpm dev
+```
+
+### 2. 创建 Claude Code adapter 配置
+
+创建配置目录：
+
+```bash
+mkdir -p ~/.config/claude-code
+```
+
+创建 `~/.config/claude-code/agent-notify.json`：
 
 ```json
 {
   "serverUrl": "http://127.0.0.1:8787",
-  "token": "dev-token-change-me",
+  "token": "my-long-random-token",
   "timeoutMs": 2000,
   "debugLogPath": "/Users/1874w/.config/claude-code/agent-notify-debug.jsonl"
 }
 ```
 
-需要配置的 Claude Code hooks：
+这里的 `token` 只填 `.env` 里 `AGENT_NOTIFY_TOKENS` 冒号后面的部分。比如服务端是：
+
+```bash
+AGENT_NOTIFY_TOKENS=macbook:my-long-random-token
+```
+
+Claude Code adapter 配置里就填：
+
+```bash
+"token": "my-long-random-token"
+```
+
+不要把 `macbook:` 一起填进去。
+
+`debugLogPath` 是可选的。建议刚接入时先保留，方便确认 Claude Code hook 是否真的触发了。
+
+### 3. 找到 adapter 文件的绝对路径
+
+在 AgentNotify 项目目录里执行：
+
+```bash
+pwd
+```
+
+假设输出是：
+
+```text
+/Users/1874w/@1874/agent-notify
+```
+
+那么 Claude Code adapter 的绝对路径就是：
+
+```text
+/Users/1874w/@1874/agent-notify/examples/claude-code/agent-notify.mjs
+```
+
+后面的 hook 配置里，把 `/ABS/PATH/examples/claude-code/agent-notify.mjs` 换成你自己的绝对路径。
+
+### 4. 配置 Claude Code hooks
+
+把下面这段合并到 Claude Code 的 settings JSON 里。你可以放在用户级 settings，也可以放在项目级 settings；如果你已经有 `hooks` 配置，只需要把这四个 hook 合并进去。
+
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /ABS/PATH/examples/claude-code/agent-notify.mjs"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /ABS/PATH/examples/claude-code/agent-notify.mjs"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /ABS/PATH/examples/claude-code/agent-notify.mjs"
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /ABS/PATH/examples/claude-code/agent-notify.mjs"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+这四个 hooks 的作用是：
 
 - `UserPromptSubmit`：记录本轮开始时间，不发通知
 - `Notification`：需要用户注意时通知
 - `Stop`：达到 `AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS` 后通知任务完成
 - `StopFailure`：任务失败或限额错误时通知
+
+配置完成后，重启 Claude Code，让 settings 生效。
+
+### 5. 验证 Claude Code adapter
+
+先确认 AgentNotify 服务正在运行：
+
+```bash
+pnpm dev
+```
+
+然后可以用一条手动 hook payload 测试 adapter 是否能连到服务端。把命令里的 adapter 路径换成你的绝对路径：
+
+```bash
+printf '{"hook_event_name":"Notification","notification_type":"idle_prompt","session_id":"manual_test","message":"AgentNotify manual test"}' | node /ABS/PATH/examples/claude-code/agent-notify.mjs
+```
+
+如果配置正确，你应该会收到一条手机通知。也可以看 adapter debug log：
+
+```bash
+tail -f ~/.config/claude-code/agent-notify-debug.jsonl
+```
+
+正常转发时，每行里会有类似字段：
+
+```json
+{"forwarded":true,"sent":true,"hookEventName":"Notification","sessionId":"manual_test"}
+```
+
+如果 `forwarded` 是 `true` 但 `sent` 是 `false`，通常说明 AgentNotify 服务没启动、token 不匹配，或者服务端返回了 4xx / 5xx。
+
+### 6. 验证 Claude Code 实际 hook
+
+在 Claude Code 里触发一个需要你注意的操作，例如让它执行一个需要确认的命令。你应该收到权限或等待输入类通知。
+
+如果想验证长任务完成通知，可以临时把服务端阈值调低：
+
+```bash
+AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS=5
+```
+
+重启 AgentNotify 服务后，让 Claude Code 跑一个超过 5 秒的任务。任务结束时应该收到完成通知。验证完再把阈值改回你日常想要的值，例如 `120`。
 
 Claude Code adapter 本身不保存状态。服务端收到 `UserPromptSubmit` 后在内存中记录本轮开始时间；
 收到 `Stop` 后判断是否达到 `AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS`，然后删除该状态；
@@ -397,6 +567,36 @@ tail -f /Users/1874w/.config/opencode/agent-notify-debug.jsonl
 ```
 
 每行里的 `forwarded` 表示该事件是否被转发给 AgentNotify。比如 `message.updated` 这类事件可能会出现在插件端日志里，但当前不会触发手机通知。这个文件是本地排障数据，可能包含原始会话信息，不要直接分享；排查完可以手动清理。
+
+### Claude Code 里没有触发通知
+
+按顺序检查：
+
+1. AgentNotify 服务是否正在运行。
+2. `~/.config/claude-code/agent-notify.json` 是否存在。
+3. `token` 是否等于服务端 `.env` 里 token 的冒号后半段。
+4. Claude Code hooks 里的 command 是否是 `node /绝对路径/examples/claude-code/agent-notify.mjs`。
+5. command 里的路径是否真实存在，可以用 `ls /绝对路径/examples/claude-code/agent-notify.mjs` 检查。
+6. Claude Code 是否已经重启并重新读取 settings。
+
+先用手动 payload 测试 adapter：
+
+```bash
+printf '{"hook_event_name":"Notification","notification_type":"idle_prompt","session_id":"manual_debug","message":"AgentNotify debug"}' | node /ABS/PATH/examples/claude-code/agent-notify.mjs
+```
+
+再看 adapter debug log：
+
+```bash
+tail -f ~/.config/claude-code/agent-notify-debug.jsonl
+```
+
+常见情况：
+
+- 没有新日志：Claude Code hook 没有执行，或 adapter config 读不到。
+- `forwarded:false`：当前 hook 不是 AgentNotify 支持的事件。
+- `forwarded:true` 但 `sent:false`：请求没有成功送到 AgentNotify，检查服务是否启动、token 是否正确、服务端终端是否报错。
+- `sent:true` 但手机没收到：检查 `data/events.jsonl` 是否有 `provider_failed`，以及 Bark endpoint 是否正确。
 
 ### token 配了还是 401
 

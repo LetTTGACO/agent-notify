@@ -116,7 +116,7 @@ function readOptionalString(raw, key) {
 }
 
 function readAgentNotifyConfig() {
-  const configPath = join(homedir(), ".config", "claude-code", "agent-notify.json");
+  const configPath = join(homedir(), ".config", "agent-notify", "claude-code.json");
   const raw = JSON.parse(readFileSync(configPath, "utf8"));
   return {
     serverUrl: readRequiredString(raw, "serverUrl"),
