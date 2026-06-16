@@ -1,0 +1,169 @@
+import type { IncomingAgentEvent } from "../core/incoming-event.js";
+
+const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000;
+const DEFAULT_MAX_SESSIONS = 1000;
+
+type UnknownRecord = Record<string, unknown>;
+
+interface SessionState {
+  startedAtMs: number;
+}
+
+export interface ClaudeCodeSessionPolicyOptions {
+  completionMinSeconds: number;
+  ttlMs?: number;
+  maxSessions?: number;
+  nowMs?: () => number;
+}
+
+export type ClaudeCodeSessionPolicyDecision =
+  | { action: "continue" }
+  | {
+      action: "suppress";
+      reason:
+        | "state_recorded"
+        | "completion_disabled"
+        | "missing_session"
+        | "missing_start"
+        | "below_threshold";
+      sourceEvent?: string;
+      sessionId?: string;
+    };
+
+function isRecord(value: unknown): value is UnknownRecord {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function hookEventName(raw: unknown): string | undefined {
+  if (!isRecord(raw)) return undefined;
+  return getString(raw.hook_event_name);
+}
+
+function sessionId(raw: unknown): string | undefined {
+  if (!isRecord(raw)) return undefined;
+  return getString(raw.session_id);
+}
+
+export class ClaudeCodeSessionPolicy {
+  private readonly completionMinSeconds: number;
+  private readonly ttlMs: number;
+  private readonly maxSessions: number;
+  private readonly nowMs: () => number;
+  private readonly sessions = new Map<string, SessionState>();
+
+  constructor(options: ClaudeCodeSessionPolicyOptions) {
+    this.completionMinSeconds = options.completionMinSeconds;
+    this.ttlMs = options.ttlMs ?? DEFAULT_TTL_MS;
+    this.maxSessions = options.maxSessions ?? DEFAULT_MAX_SESSIONS;
+    this.nowMs = options.nowMs ?? Date.now;
+  }
+
+  apply(
+    event: IncomingAgentEvent,
+    tokenName: string,
+  ): ClaudeCodeSessionPolicyDecision {
+    if (event.agent !== "claude-code") return { action: "continue" };
+
+    this.prune();
+
+    const sourceEvent = hookEventName(event.raw);
+    const id = sessionId(event.raw);
+
+    if (sourceEvent === "UserPromptSubmit") {
+      if (!id) {
+        return { action: "suppress", reason: "missing_session", sourceEvent };
+      }
+      this.sessions.set(this.key(tokenName, id), { startedAtMs: this.nowMs() });
+      this.enforceMaxSessions();
+      return {
+        action: "suppress",
+        reason: "state_recorded",
+        sourceEvent,
+        sessionId: id,
+      };
+    }
+
+    if (sourceEvent === "Stop") {
+      if (!id) {
+        return { action: "suppress", reason: "missing_session", sourceEvent };
+      }
+      const key = this.key(tokenName, id);
+      const session = this.sessions.get(key);
+      this.sessions.delete(key);
+
+      if (this.completionMinSeconds <= 0) {
+        return {
+          action: "suppress",
+          reason: "completion_disabled",
+          sourceEvent,
+          sessionId: id,
+        };
+      }
+
+      if (!session) {
+        return {
+          action: "suppress",
+          reason: "missing_start",
+          sourceEvent,
+          sessionId: id,
+        };
+      }
+
+      const elapsedSeconds = (this.nowMs() - session.startedAtMs) / 1000;
+      if (elapsedSeconds < this.completionMinSeconds) {
+        return {
+          action: "suppress",
+          reason: "below_threshold",
+          sourceEvent,
+          sessionId: id,
+        };
+      }
+
+      return { action: "continue" };
+    }
+
+    if (sourceEvent === "StopFailure" && id) {
+      this.sessions.delete(this.key(tokenName, id));
+    }
+
+    return { action: "continue" };
+  }
+
+  sessionCount(): number {
+    return this.sessions.size;
+  }
+
+  private key(tokenName: string, sessionId: string): string {
+    return `${tokenName}:${sessionId}`;
+  }
+
+  private prune(): void {
+    const now = this.nowMs();
+    for (const [key, session] of this.sessions) {
+      if (now - session.startedAtMs > this.ttlMs) {
+        this.sessions.delete(key);
+      }
+    }
+  }
+
+  private enforceMaxSessions(): void {
+    while (this.sessions.size > this.maxSessions) {
+      let oldestKey: string | undefined;
+      let oldestStartedAt = Number.POSITIVE_INFINITY;
+
+      for (const [key, session] of this.sessions) {
+        if (session.startedAtMs < oldestStartedAt) {
+          oldestStartedAt = session.startedAtMs;
+          oldestKey = key;
+        }
+      }
+
+      if (!oldestKey) return;
+      this.sessions.delete(oldestKey);
+    }
+  }
+}
