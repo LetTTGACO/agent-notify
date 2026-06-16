@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -107,6 +107,18 @@ describe("config parsing", () => {
         AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS: "-1",
       }),
     ).toThrow();
+  });
+
+  it("documents Codex completion threshold in the env example", () => {
+    const contents = readFileSync(".env.example", "utf8");
+
+    expect(contents).toContain("AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS=");
+  });
+
+  it("passes Codex completion threshold through Docker compose", () => {
+    const contents = readFileSync("deploy/docker/docker-compose.yml", "utf8");
+
+    expect(contents).toContain("AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS");
   });
 
   it("loads missing env vars from a .env file", () => {

@@ -1,12 +1,12 @@
 # AgentNotify 人类使用手册
 
-这份手册写给“想在 OpenCode 或 Claude Code 里收到手机通知”的人。你不需要先读源码；照着走一遍，就能把 AI coding agent 的关键事件转发到 AgentNotify，再由 Bark 推送到 iPhone 或 Apple Watch。
+这份手册写给“想在 OpenCode、Claude Code 或 Codex 里收到手机通知”的人。你不需要先读源码；照着走一遍，就能把 AI coding agent 的关键事件转发到 AgentNotify，再由 Bark 推送到 iPhone 或 Apple Watch。
 
 ## 这个项目是做什么的
 
 AgentNotify 是一个本地通知中转站：
 
-1. OpenCode 或 Claude Code 运行到需要你处理的事件，例如请求命令权限、问题选择、长任务完成或会话报错。
+1. OpenCode、Claude Code 或 Codex 运行到需要你处理的事件，例如请求命令权限、问题选择、长任务完成或会话报错。
 2. 本地 adapter 把事件发到本机的 AgentNotify 服务。
 3. AgentNotify 把事件格式化成简短通知。
 4. AgentNotify 调用 Bark，把通知推到你的 iPhone / Apple Watch。
@@ -27,6 +27,12 @@ Claude Code 侧支持这些 hooks：
 - `Notification`：Claude Code 需要权限批准或处理 MCP 交互时推送；普通 `idle_prompt` 默认忽略
 - `Stop`：长任务达到服务端阈值后推送完成通知
 - `StopFailure`：任务失败或限额错误时推送
+
+Codex 侧支持这些 hooks：
+
+- `UserPromptSubmit`：只用于服务端记录本轮开始时间，不推送手机通知
+- `PermissionRequest`：Codex 准备请求权限时推送
+- `Stop`：长任务达到服务端阈值后推送完成通知
 
 ## 你需要准备什么
 
@@ -68,6 +74,7 @@ AGENT_NOTIFY_TOKENS=macbook:dev-token-change-me
 AGENT_NOTIFY_PROVIDER=bark
 AGENT_NOTIFY_LANGUAGE=en
 AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS=120
+AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS=120
 BARK_ENDPOINT=https://api.day.app/example-device-key
 AGENT_NOTIFY_LOG_PATH=./data/events.jsonl
 AGENT_NOTIFY_LOG_RAW=false
@@ -79,6 +86,7 @@ AGENT_NOTIFY_LOG_RAW=false
 - `BARK_ENDPOINT`：换成你的 Bark endpoint。
 - `AGENT_NOTIFY_LANGUAGE`：通知文案语言，支持 `en` 和 `zh`，默认 `en`。
 - `AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS`：Claude Code 完成通知阈值，单位秒。设为 `0` 表示不推送 Claude Code 完成通知。
+- `AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS`：Codex 完成通知阈值，单位秒。设为 `0` 表示不推送 Codex 完成通知。
 
 建议把 `dev-token-change-me` 改成只有你知道的字符串。例如：
 

@@ -1,13 +1,14 @@
 # AgentNotify
 
-AgentNotify is a personal notification hub for AI coding agents. The MVP receives raw OpenCode hook events, formats short action-focused notifications on the server, logs safe event summaries, and sends Bark notifications to iPhone and Apple Watch.
+AgentNotify is a personal notification hub for AI coding agents. The MVP receives raw OpenCode, Claude Code, and Codex hook events, formats short action-focused notifications on the server, logs safe event summaries, and sends Bark notifications to iPhone and Apple Watch.
 
 For a step-by-step Chinese guide, see [AgentNotify 人类使用手册](docs/user-manual.md).
 
 ## MVP Scope
 
 - OpenCode plugin example
-- Server-side OpenCode formatter
+- Claude Code and Codex command-hook adapter examples
+- Server-side OpenCode, Claude Code, and Codex formatters
 - Bark provider
 - Hono `/events` and `/health`
 - JSONL logs
@@ -221,6 +222,7 @@ When a Codex hook is installed or changed, open `/hooks` in Codex and review/tru
 export AGENT_NOTIFY_TOKENS=macbook:dev-token-change-me
 export AGENT_NOTIFY_LANGUAGE=en # optional: zh
 export AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS=120 # optional
+export AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS=120 # optional
 export BARK_ENDPOINT=https://api.day.app/example-device-key
 docker compose -f deploy/docker/docker-compose.yml up --build
 ```
