@@ -48,6 +48,7 @@ export interface AppConfig {
   logPath: string;
   logRaw: boolean;
   claudeCompletionMinSeconds: number;
+  codexCompletionMinSeconds: number;
 }
 
 export function parseTokenList(value: string): NamedToken[] {
@@ -89,6 +90,10 @@ const envSchema = z.object({
     .number()
     .nonnegative()
     .default(0),
+  AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS: z.coerce
+    .number()
+    .nonnegative()
+    .default(0),
 });
 
 export function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
@@ -107,5 +112,7 @@ export function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
       parsed.AGENT_NOTIFY_LOG_RAW === "1",
     claudeCompletionMinSeconds:
       parsed.AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS,
+    codexCompletionMinSeconds:
+      parsed.AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS,
   };
 }

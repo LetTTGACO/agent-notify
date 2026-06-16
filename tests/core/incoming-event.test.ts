@@ -39,6 +39,24 @@ describe("IncomingAgentEvent schema", () => {
     expect(event.raw).toMatchObject({ hook_event_name: "Notification" });
   });
 
+  it("accepts a Codex raw envelope", () => {
+    const event = parseIncomingAgentEvent({
+      agent: "codex",
+      raw: {
+        hook_event_name: "PermissionRequest",
+        session_id: "codex_session_1",
+        tool_name: "Bash",
+        tool_input: {
+          command: "pnpm test",
+          description: "Codex needs to run tests",
+        },
+      },
+    });
+
+    expect(event.agent).toBe("codex");
+    expect(event.raw).toMatchObject({ hook_event_name: "PermissionRequest" });
+  });
+
   it("rejects the old normalized AgentEvent contract", () => {
     expect(() =>
       parseIncomingAgentEvent({

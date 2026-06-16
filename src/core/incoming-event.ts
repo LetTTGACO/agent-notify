@@ -7,7 +7,7 @@ const rawPayloadSchema = z.custom<unknown>(
 
 export const incomingAgentEventSchema = z
   .object({
-    agent: z.enum(["opencode", "claude-code"]),
+    agent: z.enum(["opencode", "claude-code", "codex"]),
     raw: rawPayloadSchema,
   })
   .strict();
