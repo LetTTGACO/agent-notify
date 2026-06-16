@@ -9,38 +9,49 @@ function provider(): NotificationProvider {
   };
 }
 
+function appOptions(mockProvider = provider()) {
+  return {
+    tokens: [{ name: "macbook", value: "secret" }],
+    provider: mockProvider,
+    logPath: "./data/test.jsonl",
+    logRaw: false,
+  };
+}
+
+const permissionEnvelope = {
+  agent: "opencode",
+  raw: {
+    id: "evt_1",
+    type: "permission.v2.asked",
+    properties: {
+      id: "perm_1",
+      sessionID: "session_1",
+      action: "bash",
+      resources: ["pnpm test"],
+    },
+  },
+};
+
 describe("server app", () => {
   it("rejects missing auth", async () => {
-    const app = createApp({
-      tokens: [{ name: "macbook", value: "secret" }],
-      provider: provider(),
-      logPath: "./data/test.jsonl",
-      logRaw: false,
-      dedupeSeconds: 30,
-    });
+    const app = createApp(appOptions());
 
     const res = await app.request("/events", {
       method: "POST",
-      body: JSON.stringify({ agent: "opencode", kind: "attention", title: "Hi" }),
+      body: JSON.stringify(permissionEnvelope),
       headers: { "content-type": "application/json" },
     });
 
     expect(res.status).toBe(401);
   });
 
-  it("accepts a valid event and sends provider notification", async () => {
+  it("accepts a raw OpenCode event and sends formatted provider notification", async () => {
     const mockProvider = provider();
-    const app = createApp({
-      tokens: [{ name: "macbook", value: "secret" }],
-      provider: mockProvider,
-      logPath: "./data/test.jsonl",
-      logRaw: false,
-      dedupeSeconds: 30,
-    });
+    const app = createApp(appOptions(mockProvider));
 
     const res = await app.request("/events", {
       method: "POST",
-      body: JSON.stringify({ agent: "opencode", kind: "attention", title: "Hi" }),
+      body: JSON.stringify(permissionEnvelope),
       headers: {
         "content-type": "application/json",
         authorization: "Bearer secret",
@@ -49,17 +60,61 @@ describe("server app", () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ ok: true });
-    expect(mockProvider.send).toHaveBeenCalledOnce();
+    expect(mockProvider.send).toHaveBeenCalledWith({
+      title: "Approve bash",
+      body: "pnpm test",
+      urgency: "time_sensitive",
+      group: "OpenCode",
+    });
+  });
+
+  it("rejects the old normalized payload", async () => {
+    const mockProvider = provider();
+    const app = createApp(appOptions(mockProvider));
+
+    const res = await app.request("/events", {
+      method: "POST",
+      body: JSON.stringify({
+        agent: "opencode",
+        kind: "attention",
+        title: "Hi",
+        project: "agent-notify",
+      }),
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer secret",
+      },
+    });
+
+    expect(res.status).toBe(400);
+    expect(mockProvider.send).not.toHaveBeenCalled();
+  });
+
+  it("rejects malformed OpenCode raw events", async () => {
+    const mockProvider = provider();
+    const app = createApp(appOptions(mockProvider));
+
+    const res = await app.request("/events", {
+      method: "POST",
+      body: JSON.stringify({
+        agent: "opencode",
+        raw: {
+          id: "evt_2",
+          properties: {},
+        },
+      }),
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer secret",
+      },
+    });
+
+    expect(res.status).toBe(400);
+    expect(mockProvider.send).not.toHaveBeenCalled();
   });
 
   it("reports health without secrets", async () => {
-    const app = createApp({
-      tokens: [{ name: "macbook", value: "secret" }],
-      provider: provider(),
-      logPath: "./data/test.jsonl",
-      logRaw: false,
-      dedupeSeconds: 30,
-    });
+    const app = createApp(appOptions());
 
     const res = await app.request("/health");
     expect(res.status).toBe(200);
@@ -73,16 +128,13 @@ describe("server app", () => {
   it("does not fail /events when logger cannot write", async () => {
     const mockProvider = provider();
     const app = createApp({
-      tokens: [{ name: "macbook", value: "secret" }],
-      provider: mockProvider,
+      ...appOptions(mockProvider),
       logPath: "/dev/null/should-not-exist/events.jsonl",
-      logRaw: false,
-      dedupeSeconds: 30,
     });
 
     const res = await app.request("/events", {
       method: "POST",
-      body: JSON.stringify({ agent: "opencode", kind: "attention", title: "Hi" }),
+      body: JSON.stringify(permissionEnvelope),
       headers: {
         "content-type": "application/json",
         authorization: "Bearer secret",

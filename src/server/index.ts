@@ -10,7 +10,6 @@ const app = createApp({
   provider,
   logPath: config.logPath,
   logRaw: config.logRaw,
-  dedupeSeconds: config.dedupeSeconds,
 });
 
 serve({
