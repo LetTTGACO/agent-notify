@@ -117,11 +117,11 @@ function questionFallback(language: NotificationLanguage): string {
 }
 
 function completedTitle(language: NotificationLanguage): string {
-  return language === "zh" ? "可查看结果" : "Ready for review";
+  return language === "zh" ? "任务已完成" : "Task complete";
 }
 
 function completedBody(language: NotificationLanguage): string {
-  return language === "zh" ? "任务已完成" : "task completed";
+  return language === "zh" ? "可以查看结果了" : "Ready to review";
 }
 
 function questionBody(properties: UnknownRecord, language: NotificationLanguage): string {
@@ -154,7 +154,7 @@ export function formatOpenCodeEvent(
       notification: {
         title: permissionTitle(action, language),
         body,
-        urgency: "normal",
+        urgency: "time_sensitive",
         group: "OpenCode",
         icon: OPENCODE_ICON_URL,
       },
@@ -173,7 +173,7 @@ export function formatOpenCodeEvent(
       notification: {
         title: permissionTitle(permission, language),
         body,
-        urgency: "normal",
+        urgency: "time_sensitive",
         group: "OpenCode",
         icon: OPENCODE_ICON_URL,
       },
@@ -189,7 +189,7 @@ export function formatOpenCodeEvent(
       notification: {
         title: questionTitle(language),
         body: questionBody(properties, language),
-        urgency: "normal",
+        urgency: "time_sensitive",
         group: "OpenCode",
         icon: OPENCODE_ICON_URL,
       },
@@ -205,7 +205,7 @@ export function formatOpenCodeEvent(
       notification: {
         title: completedTitle(language),
         body: completedBody(language),
-        urgency: "normal",
+        urgency: "time_sensitive",
         group: "OpenCode",
         icon: OPENCODE_ICON_URL,
       },

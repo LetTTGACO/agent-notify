@@ -93,11 +93,14 @@ export function createOpenCodeNotificationFilter(
       const sessionID = getSessionID(raw);
 
       if (type === "session.status" && sessionID && getStatusType(raw) === "busy") {
-        sessions.set(sessionID, {
-          startedAtMs: nowMs(),
-          failed: false,
-          completed: false,
-        });
+        const state = sessions.get(sessionID);
+        if (!state || state.failed || state.completed) {
+          sessions.set(sessionID, {
+            startedAtMs: nowMs(),
+            failed: false,
+            completed: false,
+          });
+        }
         return false;
       }
 

@@ -59,6 +59,41 @@ describe("OpenCode plugin example", () => {
     ).toBe(true);
   });
 
+  it("keeps the original busy time when OpenCode emits repeated busy statuses", () => {
+    let nowMs = 1_000;
+    const filter = createOpenCodeNotificationFilter({
+      completionMinSeconds: 30,
+      nowMs: () => nowMs,
+    });
+
+    filter.shouldNotify({
+      type: "session.status",
+      properties: {
+        sessionID: "session_1",
+        status: { type: "busy" },
+      },
+    });
+
+    nowMs += 31_000;
+    filter.shouldNotify({
+      type: "session.status",
+      properties: {
+        sessionID: "session_1",
+        status: { type: "busy" },
+      },
+    });
+
+    nowMs += 2;
+    expect(
+      filter.shouldNotify({
+        type: "session.idle",
+        properties: {
+          sessionID: "session_1",
+        },
+      }),
+    ).toBe(true);
+  });
+
   it("does not notify for completion when the threshold is disabled", () => {
     const filter = createOpenCodeNotificationFilter({
       completionMinSeconds: 0,

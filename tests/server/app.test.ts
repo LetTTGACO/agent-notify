@@ -64,7 +64,7 @@ describe("server app", () => {
     expect(mockProvider.send).toHaveBeenCalledWith({
       title: "Approve bash",
       body: "pnpm test",
-      urgency: "normal",
+      urgency: "time_sensitive",
       group: "OpenCode",
       icon: "https://opencode.ai/apple-touch-icon.png",
     });
@@ -90,7 +90,7 @@ describe("server app", () => {
     expect(mockProvider.send).toHaveBeenCalledWith({
       title: "批准运行命令",
       body: "pnpm test",
-      urgency: "normal",
+      urgency: "time_sensitive",
       group: "OpenCode",
       icon: "https://opencode.ai/apple-touch-icon.png",
     });

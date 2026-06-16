@@ -26,7 +26,7 @@ describe("OpenCode formatter", () => {
       notification: {
         title: "Approve bash",
         body: "pnpm test -- --runInBand",
-        urgency: "normal",
+        urgency: "time_sensitive",
         group: "OpenCode",
         icon: "https://opencode.ai/apple-touch-icon.png",
       },
@@ -59,7 +59,7 @@ describe("OpenCode formatter", () => {
       notification: {
         title: "Approve edit",
         body: "src/server/app.ts",
-        urgency: "normal",
+        urgency: "time_sensitive",
         group: "OpenCode",
         icon: "https://opencode.ai/apple-touch-icon.png",
       },
@@ -112,9 +112,9 @@ describe("OpenCode formatter", () => {
       sourceEvent: "session.idle",
       sessionId: "session_complete_1",
       notification: {
-        title: "Ready for review",
-        body: "task completed",
-        urgency: "normal",
+        title: "Task complete",
+        body: "Ready to review",
+        urgency: "time_sensitive",
         group: "OpenCode",
       },
     });
@@ -135,8 +135,8 @@ describe("OpenCode formatter", () => {
       { language: "zh" },
     );
 
-    expect(formatted.notification.title).toBe("可查看结果");
-    expect(formatted.notification.body).toBe("任务已完成");
+    expect(formatted.notification.title).toBe("任务已完成");
+    expect(formatted.notification.body).toBe("可以查看结果了");
   });
 
   it("formats question.asked as a short answer-required notification", () => {
@@ -171,7 +171,7 @@ describe("OpenCode formatter", () => {
       notification: {
         title: "Question",
         body: "「测试下长任务」具体想测试哪个场景？",
-        urgency: "normal",
+        urgency: "time_sensitive",
         group: "OpenCode",
       },
     });
