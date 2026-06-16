@@ -21,6 +21,7 @@ export class BarkProvider implements NotificationProvider {
           group: input.group,
           sound: input.sound,
           url: input.url,
+          icon: input.icon,
           level: input.urgency === "time_sensitive" ? "timeSensitive" : "active",
         }),
       });

@@ -5,6 +5,7 @@ export interface NotificationPayload {
   group?: string;
   sound?: string;
   url?: string;
+  icon?: string;
 }
 
 export interface NotificationResult {

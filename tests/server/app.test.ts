@@ -63,8 +63,9 @@ describe("server app", () => {
     expect(mockProvider.send).toHaveBeenCalledWith({
       title: "Approve bash",
       body: "pnpm test",
-      urgency: "time_sensitive",
+      urgency: "normal",
       group: "OpenCode",
+      icon: "https://opencode.ai/apple-touch-icon.png",
     });
   });
 

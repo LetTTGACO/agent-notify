@@ -26,8 +26,9 @@ describe("OpenCode formatter", () => {
       notification: {
         title: "Approve bash",
         body: "pnpm test -- --runInBand",
-        urgency: "time_sensitive",
+        urgency: "normal",
         group: "OpenCode",
+        icon: "https://opencode.ai/apple-touch-icon.png",
       },
     });
     expect(formatted.notification.title).not.toContain("OpenCode");
@@ -58,8 +59,9 @@ describe("OpenCode formatter", () => {
       notification: {
         title: "Approve edit",
         body: "src/server/app.ts",
-        urgency: "time_sensitive",
+        urgency: "normal",
         group: "OpenCode",
+        icon: "https://opencode.ai/apple-touch-icon.png",
       },
     });
   });

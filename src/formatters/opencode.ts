@@ -5,6 +5,7 @@ import {
 } from "../core/formatted-event.js";
 
 const MAX_BODY_LENGTH = 80;
+const OPENCODE_ICON_URL = "https://opencode.ai/apple-touch-icon.png";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -86,8 +87,9 @@ export function formatOpenCodeEvent(
       notification: {
         title: `Approve ${action}`,
         body,
-        urgency: "time_sensitive",
+        urgency: "normal",
         group: "OpenCode",
+        icon: OPENCODE_ICON_URL,
       },
     };
   }
@@ -104,8 +106,9 @@ export function formatOpenCodeEvent(
       notification: {
         title: `Approve ${permission}`,
         body,
-        urgency: "time_sensitive",
+        urgency: "normal",
         group: "OpenCode",
+        icon: OPENCODE_ICON_URL,
       },
     };
   }
@@ -128,6 +131,7 @@ export function formatOpenCodeEvent(
         body: truncate(body),
         urgency: "time_sensitive",
         group: "OpenCode",
+        icon: OPENCODE_ICON_URL,
       },
     };
   }
