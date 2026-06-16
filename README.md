@@ -139,6 +139,82 @@ Enable Claude Code completion notifications by setting
 The server keeps completion state in memory, deletes it on `Stop` or `StopFailure`,
 and prunes abnormal leftovers with a 24-hour TTL and 1000-session cap.
 
+## Codex Adapter
+
+Codex uses command hooks. Copy the example adapter to a stable local config path:
+
+```bash
+mkdir -p ~/.config/agent-notify
+cp examples/codex/agent-notify.mjs ~/.config/agent-notify/codex-agent-notify.mjs
+```
+
+Create `~/.config/agent-notify/codex.json`:
+
+```json
+{
+  "serverUrl": "http://127.0.0.1:8787",
+  "token": "dev-token-change-me",
+  "timeoutMs": 2000,
+  "debugLogPath": "/ABS/PATH/.config/agent-notify/codex-debug.jsonl"
+}
+```
+
+Configure user-level Codex hooks in `~/.codex/hooks.json`:
+
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /ABS/PATH/.config/agent-notify/codex-agent-notify.mjs",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /ABS/PATH/.config/agent-notify/codex-agent-notify.mjs",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /ABS/PATH/.config/agent-notify/codex-agent-notify.mjs",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+The adapter forwards `UserPromptSubmit`, `PermissionRequest`, and `Stop`.
+`PermissionRequest` sends an immediate permission notification.
+`UserPromptSubmit` only records server-side state.
+`Stop` sends a completion notification only when the server threshold is enabled
+and the turn lasted at least that many seconds.
+
+Enable Codex completion notifications on the server with:
+
+```bash
+AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS=120
+```
+
+When a Codex hook is installed or changed, open `/hooks` in Codex and review/trust the hook before relying on it.
+
 ## Docker
 
 ```bash
