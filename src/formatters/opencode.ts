@@ -1,0 +1,136 @@
+import type { IncomingAgentEvent } from "../core/incoming-event.js";
+import {
+  EventFormatError,
+  type FormattedAgentEvent,
+} from "../core/formatted-event.js";
+
+const MAX_BODY_LENGTH = 80;
+
+type UnknownRecord = Record<string, unknown>;
+
+function isRecord(value: unknown): value is UnknownRecord {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function getProperties(raw: UnknownRecord): UnknownRecord {
+  const properties = raw.properties;
+  return isRecord(properties) ? properties : raw;
+}
+
+function oneLine(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function truncate(value: string, maxLength = MAX_BODY_LENGTH): string {
+  const text = oneLine(value);
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength - 3).trimEnd()}...`;
+}
+
+function summarizeList(value: unknown): string {
+  if (!Array.isArray(value)) return "";
+  return truncate(
+    value
+      .map((item) => String(item))
+      .map(oneLine)
+      .filter(Boolean)
+      .join(", "),
+  );
+}
+
+function errorMessage(value: unknown): string | undefined {
+  if (typeof value === "string") return oneLine(value);
+  if (!isRecord(value)) return undefined;
+  return (
+    getString(value.message) ??
+    getString(value.name) ??
+    getString(value._tag)
+  );
+}
+
+function requireRawRecord(raw: unknown): UnknownRecord {
+  if (!isRecord(raw)) {
+    throw new EventFormatError("OpenCode raw payload must be an object");
+  }
+  return raw;
+}
+
+function requireEventType(raw: UnknownRecord): string {
+  const type = getString(raw.type);
+  if (!type) {
+    throw new EventFormatError("OpenCode raw payload is missing type");
+  }
+  return type;
+}
+
+export function formatOpenCodeEvent(
+  event: IncomingAgentEvent,
+): FormattedAgentEvent {
+  const raw = requireRawRecord(event.raw);
+  const sourceEvent = requireEventType(raw);
+  const properties = getProperties(raw);
+
+  if (sourceEvent === "permission.v2.asked") {
+    const action = getString(properties.action) ?? "permission";
+    const body = summarizeList(properties.resources) || "Permission requested";
+
+    return {
+      agent: event.agent,
+      kind: "permission_required",
+      sourceEvent,
+      sessionId: getString(properties.sessionID),
+      notification: {
+        title: `Approve ${action}`,
+        body,
+        urgency: "time_sensitive",
+        group: "OpenCode",
+      },
+    };
+  }
+
+  if (sourceEvent === "permission.asked") {
+    const permission = getString(properties.permission) ?? "permission";
+    const body = summarizeList(properties.patterns) || "Permission requested";
+
+    return {
+      agent: event.agent,
+      kind: "permission_required",
+      sourceEvent,
+      sessionId: getString(properties.sessionID),
+      notification: {
+        title: `Approve ${permission}`,
+        body,
+        urgency: "time_sensitive",
+        group: "OpenCode",
+      },
+    };
+  }
+
+  if (sourceEvent === "session.error") {
+    const body =
+      errorMessage(properties.error) ??
+      errorMessage(raw.error) ??
+      getString(properties.message) ??
+      getString(raw.message) ??
+      "Session error";
+
+    return {
+      agent: event.agent,
+      kind: "failed",
+      sourceEvent,
+      sessionId: getString(properties.sessionID) ?? getString(raw.sessionID),
+      notification: {
+        title: "Failed",
+        body: truncate(body),
+        urgency: "time_sensitive",
+        group: "OpenCode",
+      },
+    };
+  }
+
+  throw new EventFormatError(`Unsupported OpenCode event type: ${sourceEvent}`);
+}
