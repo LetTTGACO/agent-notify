@@ -95,6 +95,44 @@ describe("OpenCode formatter", () => {
     });
   });
 
+  it("formats question.asked as a short answer-required notification", () => {
+    const formatted = formatOpenCodeEvent({
+      agent: "opencode",
+      raw: {
+        id: "evt_question_1",
+        type: "question.asked",
+        properties: {
+          id: "question_1",
+          sessionID: "session_question_1",
+          questions: [
+            {
+              header: "Scene",
+              question: "「测试下长任务」具体想测试哪个场景？",
+              options: [
+                {
+                  label: "派发长跑子代理",
+                  description: "派发一个子代理跑耗时任务",
+                },
+              ],
+            },
+          ],
+        },
+      },
+    });
+
+    expect(formatted).toMatchObject({
+      kind: "question_required",
+      sourceEvent: "question.asked",
+      sessionId: "session_question_1",
+      notification: {
+        title: "Question",
+        body: "「测试下长任务」具体想测试哪个场景？",
+        urgency: "normal",
+        group: "OpenCode",
+      },
+    });
+  });
+
   it("formats permission.v2.asked in Chinese when requested", () => {
     const formatted = formatOpenCodeEvent(
       {
@@ -155,6 +193,27 @@ describe("OpenCode formatter", () => {
 
     expect(formatted.notification.title).toBe("失败");
     expect(formatted.notification.body).toBe("会话错误");
+  });
+
+  it("formats question.asked fallback in Chinese", () => {
+    const formatted = formatOpenCodeEvent(
+      {
+        agent: "opencode",
+        raw: {
+          id: "evt_zh_question",
+          type: "question.asked",
+          properties: {
+            id: "question_zh",
+            sessionID: "session_zh_question",
+            questions: [],
+          },
+        },
+      },
+      { language: "zh" },
+    );
+
+    expect(formatted.notification.title).toBe("需要回答");
+    expect(formatted.notification.body).toBe("请选择一个回答");
   });
 
   it("truncates long body text to one line", () => {

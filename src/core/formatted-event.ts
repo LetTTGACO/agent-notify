@@ -1,7 +1,10 @@
 import type { IncomingAgentEvent } from "./incoming-event.js";
 import type { NotificationPayload } from "../providers/types.js";
 
-export type FormattedAgentKind = "permission_required" | "failed";
+export type FormattedAgentKind =
+  | "permission_required"
+  | "question_required"
+  | "failed";
 
 export interface FormattedAgentEvent {
   agent: IncomingAgentEvent["agent"];

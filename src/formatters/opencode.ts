@@ -108,6 +108,23 @@ function sessionErrorFallback(language: NotificationLanguage): string {
   return language === "zh" ? "会话错误" : "Session error";
 }
 
+function questionTitle(language: NotificationLanguage): string {
+  return language === "zh" ? "需要回答" : "Question";
+}
+
+function questionFallback(language: NotificationLanguage): string {
+  return language === "zh" ? "请选择一个回答" : "Choose an answer";
+}
+
+function questionBody(properties: UnknownRecord, language: NotificationLanguage): string {
+  const questions = properties.questions;
+  if (Array.isArray(questions) && isRecord(questions[0])) {
+    const question = getString(questions[0].question);
+    if (question) return truncate(question);
+  }
+  return questionFallback(language);
+}
+
 export function formatOpenCodeEvent(
   event: IncomingAgentEvent,
   options?: FormatterOptions,
@@ -148,6 +165,22 @@ export function formatOpenCodeEvent(
       notification: {
         title: permissionTitle(permission, language),
         body,
+        urgency: "normal",
+        group: "OpenCode",
+        icon: OPENCODE_ICON_URL,
+      },
+    };
+  }
+
+  if (sourceEvent === "question.asked") {
+    return {
+      agent: event.agent,
+      kind: "question_required",
+      sourceEvent,
+      sessionId: getString(properties.sessionID),
+      notification: {
+        title: questionTitle(language),
+        body: questionBody(properties, language),
         urgency: "normal",
         group: "OpenCode",
         icon: OPENCODE_ICON_URL,

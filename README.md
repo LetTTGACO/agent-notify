@@ -38,7 +38,8 @@ Copy `examples/opencode/agent-notify.ts` into an OpenCode plugin location and cr
 {
   "serverUrl": "http://127.0.0.1:8787",
   "token": "dev-token-change-me",
-  "timeoutMs": 2000
+  "timeoutMs": 2000,
+  "debugLogPath": "/Users/1874w/.config/opencode/agent-notify-debug.jsonl"
 }
 ```
 
@@ -46,6 +47,7 @@ The adapter only forwards notification-worthy OpenCode hooks:
 
 - `permission.v2.asked`
 - `permission.asked`
+- `question.asked`
 - `session.error`
 
 The adapter sends the raw OpenCode event to the server as:
@@ -60,6 +62,8 @@ The adapter sends the raw OpenCode event to the server as:
 ```
 
 The server formats the raw event into a short notification. The adapter is fail-safe: server errors do not block OpenCode.
+
+`debugLogPath` is optional. When set, the OpenCode plugin writes one JSONL entry for every event it sees, including whether that event was forwarded to AgentNotify and the raw OpenCode event payload. Treat this file as local debug data and do not share it without review.
 
 ## Docker
 
