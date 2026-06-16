@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createApp } from "../../src/server/app.js";
+import { ClaudeCodeSessionPolicy } from "../../src/server/claude-code-session-policy.js";
 import type { NotificationProvider } from "../../src/providers/types.js";
 
 function provider(): NotificationProvider {
@@ -16,6 +17,7 @@ function appOptions(mockProvider = provider()) {
     logPath: "./data/test.jsonl",
     logRaw: false,
     language: "en" as const,
+    claudeCompletionMinSeconds: 0,
   };
 }
 
@@ -203,5 +205,190 @@ describe("server app", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ ok: true });
     expect(mockProvider.send).toHaveBeenCalledOnce();
+  });
+
+  it("records Claude Code UserPromptSubmit without sending a notification", async () => {
+    const mockProvider = provider();
+    const app = createApp({
+      ...appOptions(mockProvider),
+      claudeCodeSessionPolicy: new ClaudeCodeSessionPolicy({
+        completionMinSeconds: 120,
+        nowMs: () => 1_000,
+      }),
+    });
+
+    const res = await app.request("/events", {
+      method: "POST",
+      body: JSON.stringify({
+        agent: "claude-code",
+        raw: {
+          hook_event_name: "UserPromptSubmit",
+          session_id: "claude_server_prompt",
+        },
+      }),
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer secret",
+      },
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, notified: false });
+    expect(mockProvider.send).not.toHaveBeenCalled();
+  });
+
+  it("suppresses Claude Code Stop before the completion threshold", async () => {
+    let nowMs = 1_000;
+    const mockProvider = provider();
+    const policy = new ClaudeCodeSessionPolicy({
+      completionMinSeconds: 120,
+      nowMs: () => nowMs,
+    });
+    const app = createApp({
+      ...appOptions(mockProvider),
+      claudeCodeSessionPolicy: policy,
+    });
+
+    await app.request("/events", {
+      method: "POST",
+      body: JSON.stringify({
+        agent: "claude-code",
+        raw: {
+          hook_event_name: "UserPromptSubmit",
+          session_id: "claude_short",
+        },
+      }),
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer secret",
+      },
+    });
+
+    nowMs += 10_000;
+
+    const res = await app.request("/events", {
+      method: "POST",
+      body: JSON.stringify({
+        agent: "claude-code",
+        raw: {
+          hook_event_name: "Stop",
+          session_id: "claude_short",
+        },
+      }),
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer secret",
+      },
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, notified: false });
+    expect(mockProvider.send).not.toHaveBeenCalled();
+  });
+
+  it("sends Claude Code Stop after the completion threshold", async () => {
+    let nowMs = 1_000;
+    const mockProvider = provider();
+    const policy = new ClaudeCodeSessionPolicy({
+      completionMinSeconds: 120,
+      nowMs: () => nowMs,
+    });
+    const app = createApp({
+      ...appOptions(mockProvider),
+      claudeCodeSessionPolicy: policy,
+    });
+
+    await app.request("/events", {
+      method: "POST",
+      body: JSON.stringify({
+        agent: "claude-code",
+        raw: {
+          hook_event_name: "UserPromptSubmit",
+          session_id: "claude_long",
+        },
+      }),
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer secret",
+      },
+    });
+
+    nowMs += 121_000;
+
+    const res = await app.request("/events", {
+      method: "POST",
+      body: JSON.stringify({
+        agent: "claude-code",
+        raw: {
+          hook_event_name: "Stop",
+          session_id: "claude_long",
+        },
+      }),
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer secret",
+      },
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ ok: true });
+    expect(mockProvider.send).toHaveBeenCalledWith({
+      title: "Task complete",
+      body: "Ready to review",
+      urgency: "time_sensitive",
+      group: "Claude Code",
+    });
+  });
+
+  it("clears Claude Code completion state on StopFailure and sends failure notification", async () => {
+    const mockProvider = provider();
+    const policy = new ClaudeCodeSessionPolicy({
+      completionMinSeconds: 120,
+      nowMs: () => 1_000,
+    });
+    const app = createApp({
+      ...appOptions(mockProvider),
+      claudeCodeSessionPolicy: policy,
+    });
+
+    await app.request("/events", {
+      method: "POST",
+      body: JSON.stringify({
+        agent: "claude-code",
+        raw: {
+          hook_event_name: "UserPromptSubmit",
+          session_id: "claude_failed",
+        },
+      }),
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer secret",
+      },
+    });
+
+    const res = await app.request("/events", {
+      method: "POST",
+      body: JSON.stringify({
+        agent: "claude-code",
+        raw: {
+          hook_event_name: "StopFailure",
+          session_id: "claude_failed",
+          error_details: "API Error: quota exceeded",
+        },
+      }),
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer secret",
+      },
+    });
+
+    expect(res.status).toBe(200);
+    expect(policy.sessionCount()).toBe(0);
+    expect(mockProvider.send).toHaveBeenCalledWith({
+      title: "Failed",
+      body: "API Error: quota exceeded",
+      urgency: "time_sensitive",
+      group: "Claude Code",
+    });
   });
 });

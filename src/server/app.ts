@@ -8,6 +8,10 @@ import { formatIncomingEvent } from "../formatters/index.js";
 import { JsonlLogger } from "../logging/jsonl.js";
 import type { NotificationProvider } from "../providers/types.js";
 import { authenticate } from "./auth.js";
+import {
+  ClaudeCodeSessionPolicy,
+  type ClaudeCodeSessionPolicyDecision,
+} from "./claude-code-session-policy.js";
 
 export interface CreateAppOptions {
   tokens: NamedToken[];
@@ -15,6 +19,8 @@ export interface CreateAppOptions {
   logPath: string;
   logRaw: boolean;
   language: NotificationLanguage;
+  claudeCompletionMinSeconds: number;
+  claudeCodeSessionPolicy?: ClaudeCodeSessionPolicy;
 }
 
 function trace(stage: string, fields: Record<string, unknown>): void {
@@ -35,6 +41,11 @@ function getRawType(raw: unknown): string {
 export function createApp(options: CreateAppOptions): Hono {
   const app = new Hono();
   const logger = new JsonlLogger(options.logPath);
+  const claudeCodeSessionPolicy =
+    options.claudeCodeSessionPolicy ??
+    new ClaudeCodeSessionPolicy({
+      completionMinSeconds: options.claudeCompletionMinSeconds,
+    });
 
   async function safeLog(entry: Record<string, unknown>): Promise<void> {
     try {
@@ -45,6 +56,32 @@ export function createApp(options: CreateAppOptions): Hono {
         error instanceof Error ? error.message : String(error),
       );
     }
+  }
+
+  async function logSuppressedClaudeCodeEvent(
+    receivedAt: string,
+    tokenName: string,
+    incomingAgent: "claude-code",
+    decision: Exclude<ClaudeCodeSessionPolicyDecision, { action: "continue" }>,
+  ): Promise<void> {
+    trace("suppressed", {
+      receivedAt,
+      tokenName,
+      agent: incomingAgent,
+      sourceEvent: decision.sourceEvent,
+      sessionId: decision.sessionId,
+      reason: decision.reason,
+    });
+    await safeLog({
+      receivedAt,
+      status: "suppressed",
+      tokenName,
+      agent: incomingAgent,
+      kind: "state",
+      sessionId: decision.sessionId,
+      sourceEvent: decision.sourceEvent,
+      reason: decision.reason,
+    });
   }
 
   app.get("/health", (c) =>
@@ -92,6 +129,21 @@ export function createApp(options: CreateAppOptions): Hono {
       agent: incoming.agent,
       type: getRawType(incoming.raw),
     });
+
+    const policyDecision = claudeCodeSessionPolicy.apply(
+      incoming,
+      auth.tokenName!,
+    );
+
+    if (policyDecision.action === "suppress") {
+      await logSuppressedClaudeCodeEvent(
+        receivedAt,
+        auth.tokenName!,
+        "claude-code",
+        policyDecision,
+      );
+      return c.json({ ok: true, notified: false });
+    }
 
     let formatted;
     try {
