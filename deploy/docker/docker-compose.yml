@@ -13,7 +13,6 @@ services:
       BARK_ENDPOINT: "${BARK_ENDPOINT}"
       AGENT_NOTIFY_LOG_PATH: "/data/events.jsonl"
       AGENT_NOTIFY_LOG_RAW: "false"
-      AGENT_NOTIFY_DEDUPE_SECONDS: "30"
     volumes:
       - agent-notify-data:/data
     healthcheck:
