@@ -29,11 +29,16 @@ async function postTestEvent(): Promise<void> {
     },
     body: JSON.stringify({
       agent: "opencode",
-      kind: "attention",
-      title: "AgentNotify test",
-      message: "Test notification from agent-notify CLI",
-      project: "agent-notify",
-      sourceEvent: "cli.test",
+      raw: {
+        id: "cli-test-event",
+        type: "permission.v2.asked",
+        properties: {
+          id: "cli-test-permission",
+          sessionID: "cli-test-session",
+          action: "bash",
+          resources: ["echo agent-notify test"],
+        },
+      },
     }),
   });
 
