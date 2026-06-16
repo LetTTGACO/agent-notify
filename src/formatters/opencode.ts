@@ -116,6 +116,14 @@ function questionFallback(language: NotificationLanguage): string {
   return language === "zh" ? "请选择一个回答" : "Choose an answer";
 }
 
+function completedTitle(language: NotificationLanguage): string {
+  return language === "zh" ? "可查看结果" : "Ready for review";
+}
+
+function completedBody(language: NotificationLanguage): string {
+  return language === "zh" ? "任务已完成" : "task completed";
+}
+
 function questionBody(properties: UnknownRecord, language: NotificationLanguage): string {
   const questions = properties.questions;
   if (Array.isArray(questions) && isRecord(questions[0])) {
@@ -181,6 +189,22 @@ export function formatOpenCodeEvent(
       notification: {
         title: questionTitle(language),
         body: questionBody(properties, language),
+        urgency: "normal",
+        group: "OpenCode",
+        icon: OPENCODE_ICON_URL,
+      },
+    };
+  }
+
+  if (sourceEvent === "session.idle") {
+    return {
+      agent: event.agent,
+      kind: "completed",
+      sourceEvent,
+      sessionId: getString(properties.sessionID) ?? getString(raw.sessionID),
+      notification: {
+        title: completedTitle(language),
+        body: completedBody(language),
         urgency: "normal",
         group: "OpenCode",
         icon: OPENCODE_ICON_URL,

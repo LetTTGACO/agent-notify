@@ -17,6 +17,21 @@ export interface CreateAppOptions {
   language: NotificationLanguage;
 }
 
+function trace(stage: string, fields: Record<string, unknown>): void {
+  try {
+    const ts = new Date().toLocaleString();
+    console.log(`[agent-notify] ${ts} ${stage} ${JSON.stringify(fields)}`);
+  } catch {
+    // Never throw from logging; requests must keep flowing.
+  }
+}
+
+function getRawType(raw: unknown): string {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return "unknown";
+  const t = (raw as { type?: unknown }).type;
+  return typeof t === "string" ? t : "unknown";
+}
+
 export function createApp(options: CreateAppOptions): Hono {
   const app = new Hono();
   const logger = new JsonlLogger(options.logPath);
@@ -41,20 +56,29 @@ export function createApp(options: CreateAppOptions): Hono {
   );
 
   app.post("/events", async (c) => {
+    const receivedAt = new Date().toLocaleString()
+    trace("received", { method: "POST", path: "/events" });
+
     const auth = authenticate(c.req.header("authorization") ?? null, options.tokens);
     if (!auth.ok) {
+      trace("auth_rejected", { receivedAt });
       await safeLog({
-        receivedAt: new Date().toISOString(),
+        receivedAt,
         status: "auth_rejected",
       });
       return c.json({ ok: false, error: "Unauthorized" }, 401);
     }
+    trace("auth_ok", { receivedAt, tokenName: auth.tokenName });
 
-    const receivedAt = new Date().toISOString();
     let incoming;
     try {
       incoming = parseIncomingAgentEvent(await c.req.json());
-    } catch {
+    } catch (error) {
+      trace("payload_invalid", {
+        receivedAt,
+        tokenName: auth.tokenName,
+        error: error instanceof Error ? error.message : String(error),
+      });
       await safeLog({
         receivedAt,
         status: "payload_rejected",
@@ -62,11 +86,24 @@ export function createApp(options: CreateAppOptions): Hono {
       });
       return c.json({ ok: false, error: "Invalid payload" }, 400);
     }
+    trace("payload_ok", {
+      receivedAt,
+      tokenName: auth.tokenName,
+      agent: incoming.agent,
+      type: getRawType(incoming.raw),
+    });
 
     let formatted;
     try {
       formatted = formatIncomingEvent(incoming, { language: options.language });
     } catch (error) {
+      trace("format_error", {
+        receivedAt,
+        tokenName: auth.tokenName,
+        agent: incoming.agent,
+        type: getRawType(incoming.raw),
+        error: error instanceof Error ? error.message : String(error),
+      });
       await safeLog({
         receivedAt,
         status: "payload_rejected",
@@ -79,9 +116,39 @@ export function createApp(options: CreateAppOptions): Hono {
         error instanceof EventFormatError ? error.message : "Invalid payload";
       return c.json({ ok: false, error: message }, 400);
     }
+    trace("format_ok", {
+      receivedAt,
+      tokenName: auth.tokenName,
+      kind: formatted.kind,
+      sourceEvent: formatted.sourceEvent,
+      sessionId: formatted.sessionId,
+    });
 
     const eventId = `evt_${randomUUID()}`;
     const result = await options.provider.send(formatted.notification);
+
+    if (result.ok) {
+      trace("sent", {
+        eventId,
+        receivedAt,
+        tokenName: auth.tokenName,
+        kind: formatted.kind,
+        sourceEvent: formatted.sourceEvent,
+        sessionId: formatted.sessionId,
+        provider: options.provider.name,
+      });
+    } else {
+      trace("provider_failed", {
+        eventId,
+        receivedAt,
+        tokenName: auth.tokenName,
+        kind: formatted.kind,
+        sourceEvent: formatted.sourceEvent,
+        sessionId: formatted.sessionId,
+        provider: options.provider.name,
+        error: result.error,
+      });
+    }
 
     await safeLog({
       eventId,

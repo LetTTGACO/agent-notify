@@ -4,6 +4,7 @@ import type { NotificationPayload } from "../providers/types.js";
 export type FormattedAgentKind =
   | "permission_required"
   | "question_required"
+  | "completed"
   | "failed";
 
 export interface FormattedAgentEvent {

@@ -17,6 +17,7 @@ AgentNotify 是一个本地通知中转站：
 - `permission.asked`
 - `question.asked`
 - `session.error`
+- `session.idle`：仅在插件配置了 `completionMinSeconds` 且本轮耗时达到阈值时转发
 
 也就是说，它不会把 OpenCode 的每一步都推给你，只会推需要你注意的事件。
 
@@ -170,6 +171,7 @@ mkdir -p ~/.config/opencode
   "serverUrl": "http://127.0.0.1:8787",
   "token": "my-long-random-token",
   "timeoutMs": 2000,
+  "completionMinSeconds": 120,
   "debugLogPath": "/Users/1874w/.config/opencode/agent-notify-debug.jsonl"
 }
 ```
@@ -179,6 +181,7 @@ mkdir -p ~/.config/opencode
 - `serverUrl`：AgentNotify 服务地址。
 - `token`：必须等于 `.env` 里 `AGENT_NOTIFY_TOKENS` 的 token 部分。
 - `timeoutMs`：插件请求超时时间，单位是毫秒。
+- `completionMinSeconds`：可选。大于 `0` 时，OpenCode 会话从 `busy` 到 `idle` 的耗时达到这个秒数后，才发送一次完成通知；不配置或设为 `0` 时，不发送完成通知。
 - `debugLogPath`：可选。配置后，OpenCode 插件会把自己看到的每个事件写进这个 JSONL 文件，包含原始 OpenCode 事件，方便排查事件是否进入插件。
 
 如果这个文件不存在、JSON 写坏了，或者缺少字段，插件会初始化失败。OpenCode 会把插件失败限制在插件边界内，不会因为 AgentNotify 配错就阻塞你的正常 OpenCode 工作。
@@ -200,6 +203,8 @@ opencode
 在 OpenCode 里触发一次需要权限的操作。例如让它执行一个需要确认的 shell 命令。插件捕捉到 `permission.v2.asked` 或 `permission.asked` 后，会向 AgentNotify 发送事件，AgentNotify 再发 Bark 通知。
 
 如果 OpenCode 需要你在几个选项里做选择，插件捕捉到 `question.asked` 后也会发送通知。
+
+如果你配置了 `completionMinSeconds`，OpenCode 进入 `busy` 后运行时间达到阈值，并随后触发 `session.idle` 时，也会收到一条完成通知。短对话、未达到阈值的运行、以及同一轮已经报错后的 `idle` 不会触发完成通知。
 
 收到通知时，大致会是：
 
@@ -354,7 +359,7 @@ pnpm agent-notify doctor
 2. `token` 是否等于服务端 `.env` 里 token 的冒号后半段。
 3. 插件文件是否复制到了正确目录。
 4. AgentNotify 服务是否正在运行。
-5. 你触发的是否是当前支持的事件：权限请求、问题选择或会话错误。
+5. 你触发的是否是当前支持的事件：权限请求、问题选择、会话错误，或达到 `completionMinSeconds` 阈值后的会话完成。
 
 如果你配置了 `debugLogPath`，先看插件端是否看到了事件：
 

@@ -39,6 +39,7 @@ Copy `examples/opencode/agent-notify.ts` into an OpenCode plugin location and cr
   "serverUrl": "http://127.0.0.1:8787",
   "token": "dev-token-change-me",
   "timeoutMs": 2000,
+  "completionMinSeconds": 120,
   "debugLogPath": "/Users/1874w/.config/opencode/agent-notify-debug.jsonl"
 }
 ```
@@ -49,6 +50,8 @@ The adapter only forwards notification-worthy OpenCode hooks:
 - `permission.asked`
 - `question.asked`
 - `session.error`
+- `session.idle` only when `completionMinSeconds` is greater than `0` and the
+  session has been busy for at least that many seconds
 
 The adapter sends the raw OpenCode event to the server as:
 

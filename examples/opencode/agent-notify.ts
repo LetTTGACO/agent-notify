@@ -10,6 +10,7 @@ interface AgentNotifyConfig {
   serverUrl: string;
   token: string;
   timeoutMs: number;
+  completionMinSeconds?: number;
   debugLogPath?: string;
 }
 
@@ -20,12 +21,104 @@ const NOTIFY_EVENT_TYPES = new Set([
   "session.error",
 ]);
 
-export function shouldNotify(raw: unknown): boolean {
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-    return false;
-  }
-  const type = (raw as { type?: unknown }).type;
+interface OpenCodeNotificationFilterOptions {
+  completionMinSeconds?: number;
+  nowMs?: () => number;
+}
+
+interface SessionState {
+  startedAtMs: number;
+  failed: boolean;
+  completed: boolean;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getEventType(raw: unknown): string | undefined {
+  if (!isRecord(raw)) return undefined;
+  return typeof raw.type === "string" ? raw.type : undefined;
+}
+
+function getProperties(raw: unknown): Record<string, unknown> {
+  if (!isRecord(raw)) return {};
+  return isRecord(raw.properties) ? raw.properties : raw;
+}
+
+function getSessionID(raw: unknown): string | undefined {
+  const properties = getProperties(raw);
+  return typeof properties.sessionID === "string" && properties.sessionID.trim()
+    ? properties.sessionID
+    : undefined;
+}
+
+function getStatusType(raw: unknown): string | undefined {
+  const status = getProperties(raw).status;
+  if (!isRecord(status)) return undefined;
+  return typeof status.type === "string" ? status.type : undefined;
+}
+
+function immediateShouldNotify(raw: unknown): boolean {
+  const type = getEventType(raw);
   return typeof type === "string" && NOTIFY_EVENT_TYPES.has(type);
+}
+
+export function createOpenCodeNotificationFilter(
+  options: OpenCodeNotificationFilterOptions = {},
+) {
+  const completionMinSeconds = options.completionMinSeconds ?? 0;
+  const nowMs = options.nowMs ?? Date.now;
+  const sessions = new Map<string, SessionState>();
+
+  function shouldNotifyCompletion(raw: unknown): boolean {
+    if (completionMinSeconds <= 0) return false;
+
+    const sessionID = getSessionID(raw);
+    if (!sessionID) return false;
+
+    const state = sessions.get(sessionID);
+    if (!state || state.failed || state.completed) return false;
+
+    const elapsedSeconds = (nowMs() - state.startedAtMs) / 1000;
+    state.completed = true;
+    if (elapsedSeconds < completionMinSeconds) return false;
+
+    return true;
+  }
+
+  return {
+    shouldNotify(raw: unknown): boolean {
+      const type = getEventType(raw);
+      const sessionID = getSessionID(raw);
+
+      if (type === "session.status" && sessionID && getStatusType(raw) === "busy") {
+        sessions.set(sessionID, {
+          startedAtMs: nowMs(),
+          failed: false,
+          completed: false,
+        });
+        return false;
+      }
+
+      if (type === "session.error" && sessionID) {
+        const state = sessions.get(sessionID);
+        if (state) {
+          state.failed = true;
+        }
+      }
+
+      if (type === "session.idle") {
+        return shouldNotifyCompletion(raw);
+      }
+
+      return immediateShouldNotify(raw);
+    },
+  };
+}
+
+export function shouldNotify(raw: unknown): boolean {
+  return immediateShouldNotify(raw);
 }
 
 export function summarizeOpenCodeEventForDebug(raw: unknown): Record<string, unknown> {
@@ -102,6 +195,15 @@ function readRequiredNumber(raw: Record<string, unknown>, key: string): number {
   return value;
 }
 
+function readOptionalNumber(raw: Record<string, unknown>, key: string): number | undefined {
+  const value = raw[key];
+  if (value === undefined) return undefined;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    throw new Error(`agent-notify config ${key} must be a non-negative number`);
+  }
+  return value;
+}
+
 function readOptionalString(raw: Record<string, unknown>, key: string): string | undefined {
   const value = raw[key];
   if (value === undefined) return undefined;
@@ -118,12 +220,17 @@ function readAgentNotifyConfig(): AgentNotifyConfig {
     serverUrl: readRequiredString(raw, "serverUrl"),
     token: readRequiredString(raw, "token"),
     timeoutMs: readRequiredNumber(raw, "timeoutMs"),
+    completionMinSeconds: readOptionalNumber(raw, "completionMinSeconds"),
     debugLogPath: readOptionalString(raw, "debugLogPath"),
   };
 }
 
-async function notify(config: AgentNotifyConfig, raw: unknown) {
-  const forwarded = shouldNotify(raw);
+async function notify(
+  config: AgentNotifyConfig,
+  filter: ReturnType<typeof createOpenCodeNotificationFilter>,
+  raw: unknown,
+) {
+  const forwarded = filter.shouldNotify(raw);
   writeDebugLog(config, raw, forwarded);
   if (!forwarded) return;
   await sendOpenCodeEvent(config.serverUrl, config.token, config.timeoutMs, raw);
@@ -134,9 +241,13 @@ async function notify(config: AgentNotifyConfig, raw: unknown) {
 // See https://opencode.ai/docs/plugins/ for the plugin API.
 export const AgentNotifyPlugin = async () => {
   const config = readAgentNotifyConfig();
+  const filter = createOpenCodeNotificationFilter({
+    completionMinSeconds: config.completionMinSeconds,
+  });
+
   return {
     event: async ({ event }: { event: { type: string; [key: string]: unknown } }) => {
-      await notify(config, event);
+      await notify(config, filter, event);
     },
   };
 };

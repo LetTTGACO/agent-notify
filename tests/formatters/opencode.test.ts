@@ -95,6 +95,50 @@ describe("OpenCode formatter", () => {
     });
   });
 
+  it("formats session.idle as a completion notification", () => {
+    const formatted = formatOpenCodeEvent({
+      agent: "opencode",
+      raw: {
+        id: "evt_complete_1",
+        type: "session.idle",
+        properties: {
+          sessionID: "session_complete_1",
+        },
+      },
+    });
+
+    expect(formatted).toMatchObject({
+      kind: "completed",
+      sourceEvent: "session.idle",
+      sessionId: "session_complete_1",
+      notification: {
+        title: "Ready for review",
+        body: "task completed",
+        urgency: "normal",
+        group: "OpenCode",
+      },
+    });
+  });
+
+  it("formats session.idle completion in Chinese", () => {
+    const formatted = formatOpenCodeEvent(
+      {
+        agent: "opencode",
+        raw: {
+          id: "evt_complete_zh_1",
+          type: "session.idle",
+          properties: {
+            sessionID: "session_complete_zh_1",
+          },
+        },
+      },
+      { language: "zh" },
+    );
+
+    expect(formatted.notification.title).toBe("可查看结果");
+    expect(formatted.notification.body).toBe("任务已完成");
+  });
+
   it("formats question.asked as a short answer-required notification", () => {
     const formatted = formatOpenCodeEvent({
       agent: "opencode",
