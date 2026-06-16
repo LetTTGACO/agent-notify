@@ -1,2 +1,2 @@
 export { readOpenCodeConfig } from "./config.js";
-export { mapOpenCodeEvent, sendOpenCodeEvent } from "./map-event.js";
+export { sendOpenCodeEvent, shouldNotifyOpenCodeEvent } from "./map-event.js";
