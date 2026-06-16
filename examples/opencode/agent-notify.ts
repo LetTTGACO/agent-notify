@@ -1,91 +1,26 @@
-// OpenCode plugin: forwards events to agent-notify server.
+// OpenCode plugin: forwards notification-worthy events to agent-notify server.
 // Copy this file to ~/.config/opencode/plugins/ or .opencode/plugins/.
-// Required env: AGENT_NOTIFY_TOKEN. Optional: AGENT_NOTIFY_SERVER_URL, AGENT_NOTIFY_PROJECT, AGENT_NOTIFY_INCLUDE_RAW, AGENT_NOTIFY_TIMEOUT_MS.
+// Required env: AGENT_NOTIFY_TOKEN. Optional: AGENT_NOTIFY_SERVER_URL, AGENT_NOTIFY_TIMEOUT_MS.
 
-interface AgentEvent {
-  agent: "opencode";
-  kind: "permission_required" | "completed" | "failed" | "attention";
-  title: string;
-  message?: string;
-  project?: string;
-  sessionId?: string;
-  cwd?: string;
-  sourceEvent: string;
-  raw?: unknown;
-}
+const NOTIFY_EVENT_TYPES = new Set([
+  "permission.v2.asked",
+  "permission.asked",
+  "session.error",
+]);
 
-function basename(path: string | undefined): string | undefined {
-  if (!path) return undefined;
-  const parts = path.split("/").filter(Boolean);
-  return parts.at(-1);
-}
-
-function isDeniedReply(payload: Record<string, unknown>): boolean {
-  const text = JSON.stringify(payload).toLowerCase();
-  return (
-    text.includes("denied") ||
-    text.includes("cancelled") ||
-    text.includes("canceled") ||
-    text.includes("error")
-  );
-}
-
-function mapOpenCodeEvent(
-  sourceEvent: string,
-  payload: Record<string, unknown>,
-  projectOverride?: string,
-): AgentEvent | null {
-  const cwd = String(payload.cwd ?? payload.path ?? "") || undefined;
-  const project = projectOverride ?? basename(cwd);
-  const sessionId =
-    String(payload.sessionId ?? payload.sessionID ?? payload.session_id ?? "") ||
-    undefined;
-  const base = { agent: "opencode" as const, project, sessionId, cwd, sourceEvent };
-
-  if (sourceEvent === "permission.asked") {
-    return {
-      ...base,
-      kind: "permission_required",
-      title: "OpenCode needs permission",
-      message: "OpenCode is waiting for approval.",
-      raw: payload,
-    };
+function shouldNotify(raw: unknown): boolean {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return false;
   }
-  if (sourceEvent === "session.error") {
-    return {
-      ...base,
-      kind: "failed",
-      title: "OpenCode session error",
-      message: String(payload.message ?? payload.error ?? "OpenCode reported an error."),
-      raw: payload,
-    };
-  }
-  if (sourceEvent === "session.idle") {
-    return {
-      ...base,
-      kind: "attention",
-      title: "OpenCode session idle",
-      message: "OpenCode is idle and may need review.",
-      raw: payload,
-    };
-  }
-  if (sourceEvent === "permission.replied" && isDeniedReply(payload)) {
-    return {
-      ...base,
-      kind: "attention",
-      title: "OpenCode permission was not approved",
-      message: "A permission request was denied, cancelled, or failed.",
-      raw: payload,
-    };
-  }
-  return null;
+  const type = (raw as { type?: unknown }).type;
+  return typeof type === "string" && NOTIFY_EVENT_TYPES.has(type);
 }
 
 async function sendOpenCodeEvent(
   serverUrl: string,
   token: string,
   timeoutMs: number,
-  event: AgentEvent,
+  raw: unknown,
 ): Promise<void> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -96,7 +31,7 @@ async function sendOpenCodeEvent(
         "content-type": "application/json",
         authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(event),
+      body: JSON.stringify({ agent: "opencode", raw }),
       signal: controller.signal,
     });
   } catch {
@@ -108,26 +43,21 @@ async function sendOpenCodeEvent(
 
 const SERVER_URL = process.env.AGENT_NOTIFY_SERVER_URL ?? "http://127.0.0.1:8787";
 const TOKEN = process.env.AGENT_NOTIFY_TOKEN ?? "";
-const PROJECT = process.env.AGENT_NOTIFY_PROJECT;
-const INCLUDE_RAW = process.env.AGENT_NOTIFY_INCLUDE_RAW === "true";
 const TIMEOUT_MS = Number(process.env.AGENT_NOTIFY_TIMEOUT_MS ?? 2000);
 
-async function notify(sourceEvent: string, payload: Record<string, unknown>) {
+async function notify(raw: unknown) {
   if (!TOKEN) return;
-  const event = mapOpenCodeEvent(sourceEvent, payload, PROJECT);
-  if (!event) return;
-  const safeEvent = INCLUDE_RAW ? event : { ...event, raw: undefined };
-  await sendOpenCodeEvent(SERVER_URL, TOKEN, TIMEOUT_MS, safeEvent);
+  if (!shouldNotify(raw)) return;
+  await sendOpenCodeEvent(SERVER_URL, TOKEN, TIMEOUT_MS, raw);
 }
 
-// OpenCode plugin: use the unified `event` hook so we don't have to guess
-// each event's input shape. The event object has a `type` discriminator and
-// carries the relevant fields (sessionID, cwd, etc.) directly.
-// See https://opencode.ai/docs/plugins/ for the real plugin API.
+// OpenCode plugin: use the unified `event` hook so we receive the real event
+// object, including v1 and v2 permission event shapes.
+// See https://opencode.ai/docs/plugins/ for the plugin API.
 export const AgentNotifyPlugin = async () => {
   return {
     event: async ({ event }: { event: { type: string; [key: string]: unknown } }) => {
-      await notify(event.type, event as Record<string, unknown>);
+      await notify(event);
     },
   };
 };
