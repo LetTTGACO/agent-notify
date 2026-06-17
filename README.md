@@ -221,8 +221,8 @@ Configure user-level Codex hooks in `~/.codex/hooks.json`:
 }
 ```
 
-The adapter forwards `UserPromptSubmit`, `PermissionRequest`, and `Stop`.
-`PermissionRequest` sends an immediate permission notification.
+The adapter forwards `UserPromptSubmit`, user-actionable `PermissionRequest`, and `Stop`.
+`PermissionRequest` sends an immediate permission notification unless Codex reports `permission_mode: "bypassPermissions"`.
 `UserPromptSubmit` only records server-side state.
 `Stop` sends a completion notification only when the server threshold is enabled
 and the turn lasted at least that many seconds.

@@ -38,8 +38,18 @@ function getToolName(raw) {
     : undefined;
 }
 
+function getPermissionMode(raw) {
+  if (!isRecord(raw)) return undefined;
+  return typeof raw.permission_mode === "string" && raw.permission_mode.trim()
+    ? raw.permission_mode
+    : undefined;
+}
+
 export function shouldForwardCodexEvent(raw) {
   const hookEventName = getHookEventName(raw);
+  if (hookEventName === "PermissionRequest") {
+    return getPermissionMode(raw) !== "bypassPermissions";
+  }
   return typeof hookEventName === "string" && NOTIFY_EVENT_NAMES.has(hookEventName);
 }
 

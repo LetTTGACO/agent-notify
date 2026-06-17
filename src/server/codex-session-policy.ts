@@ -25,7 +25,8 @@ export type CodexSessionPolicyDecision =
         | "completion_disabled"
         | "missing_session"
         | "missing_start"
-        | "below_threshold";
+        | "below_threshold"
+        | "permission_bypassed";
       sourceEvent?: string;
       sessionId?: string;
     };
@@ -46,6 +47,11 @@ function hookEventName(raw: unknown): string | undefined {
 function sessionId(raw: unknown): string | undefined {
   if (!isRecord(raw)) return undefined;
   return getString(raw.session_id);
+}
+
+function permissionMode(raw: unknown): string | undefined {
+  if (!isRecord(raw)) return undefined;
+  return getString(raw.permission_mode);
 }
 
 export class CodexSessionPolicy {
@@ -72,6 +78,18 @@ export class CodexSessionPolicy {
 
     const sourceEvent = hookEventName(event.raw);
     const id = sessionId(event.raw);
+
+    if (
+      sourceEvent === "PermissionRequest" &&
+      permissionMode(event.raw) === "bypassPermissions"
+    ) {
+      return {
+        action: "suppress",
+        reason: "permission_bypassed",
+        sourceEvent,
+        sessionId: id,
+      };
+    }
 
     if (sourceEvent === "UserPromptSubmit") {
       if (!id) {

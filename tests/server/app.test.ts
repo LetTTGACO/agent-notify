@@ -511,6 +511,35 @@ describe("server app", () => {
     });
   });
 
+  it("suppresses bypassed Codex PermissionRequest without sending a notification", async () => {
+    const mockProvider = provider();
+    const app = createApp({
+      ...appOptions(mockProvider),
+      codexCompletionMinSeconds: 120,
+    });
+
+    const res = await app.request("/events", {
+      method: "POST",
+      body: JSON.stringify({
+        agent: "codex",
+        raw: {
+          hook_event_name: "PermissionRequest",
+          permission_mode: "bypassPermissions",
+          session_id: "codex_permission",
+          tool_name: "Bash",
+        },
+      }),
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer secret",
+      },
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, notified: false });
+    expect(mockProvider.send).not.toHaveBeenCalled();
+  });
+
   it("suppresses Codex Stop before the completion threshold", async () => {
     let nowMs = 1_000;
     const mockProvider = provider();

@@ -59,6 +59,32 @@ describe("CodexSessionPolicy", () => {
     expect(policy.sessionCount()).toBe(0);
   });
 
+  it("suppresses bypassed PermissionRequest events", () => {
+    const policy = new CodexSessionPolicy({
+      completionMinSeconds: 120,
+      nowMs: () => 1_000,
+    });
+
+    expect(
+      policy.apply(
+        {
+          agent: "codex",
+          raw: {
+            hook_event_name: "PermissionRequest",
+            permission_mode: "bypassPermissions",
+            session_id: "session_1",
+          },
+        },
+        "macbook",
+      ),
+    ).toEqual({
+      action: "suppress",
+      reason: "permission_bypassed",
+      sourceEvent: "PermissionRequest",
+      sessionId: "session_1",
+    });
+  });
+
   it("suppresses Stop with completion_disabled when threshold is zero", () => {
     const policy = new CodexSessionPolicy({
       completionMinSeconds: 0,

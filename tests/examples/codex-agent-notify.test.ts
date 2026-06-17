@@ -35,6 +35,12 @@ describe("Codex adapter example", () => {
     ).toBe(true);
     expect(
       adapter.shouldForwardCodexEvent({
+        hook_event_name: "PermissionRequest",
+        permission_mode: "bypassPermissions",
+      }),
+    ).toBe(false);
+    expect(
+      adapter.shouldForwardCodexEvent({
         hook_event_name: "Stop",
       }),
     ).toBe(true);
