@@ -1,6 +1,6 @@
 # AgentNotify 人类使用手册
 
-这份手册写给“想在 OpenCode、Claude Code 或 Codex 里收到手机通知”的人。你不需要先读源码；照着走一遍，就能把 AI coding agent 的关键事件转发到 AgentNotify，再由 Bark 推送到 iPhone 或 Apple Watch。
+这份手册写给想给 OpenCode、Claude Code、Codex 接上手机或桌面通知的人。照着配置一遍，就能把关键事件转发到 AgentNotify，再由 Bark 或 ntfy 推到你的设备。
 
 ## 这个项目是做什么的
 
@@ -165,7 +165,7 @@ pnpm agent-notify doctor
 
 正常时你会看到几行 `OK`，包括：
 
-- Bark endpoint 配置存在
+- 当前 provider（`bark` 或 `ntfy`）的 endpoint 配置存在
 - 日志目录可写
 - `/health` 能访问
 

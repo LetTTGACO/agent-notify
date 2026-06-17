@@ -78,7 +78,7 @@ Once the Provider is chosen, the user must install its client app on the receivi
 
 Confirm "app installed and endpoint ready?" before moving on. Do not ask what the endpoint is — only yes/no.
 
-> For Provider background and the Bark/ntfy differences, see the human manual `docs/user-manual.md`, sections "通知方式：Bark 与 ntfy" and "多平台适配一览". Point the user there if they have questions; do not re-explain it in the conversation.
+> For Provider background and the Bark/ntfy differences, see the human manual `docs/human-manual-en.md`, sections "Notification providers: Bark and ntfy" and "Platform support at a glance". Point the user there if they have questions; do not re-explain it in the conversation.
 
 ---
 
@@ -370,7 +370,7 @@ Open Codex, confirm the hook is trusted if Codex asks, then trigger an operation
 
 ### 5.4 When no notification arrives
 
-Do not guess in the conversation. Point to the human manual `docs/user-manual.md`, "错误排查" section, which has a full per-agent troubleshooting checklist (including `debugLogPath` usage, manually testing the adapter with a payload, and reading `provider_failed` in `data/events.jsonl`). Just walk the checklist with the user.
+Do not guess in the conversation. Refer to the human manual `docs/human-manual-en.md`, "Troubleshooting" section, which has a full per-agent troubleshooting checklist (including `debugLogPath` usage, manually testing the adapter with a payload, and reading `provider_failed` in `data/events.jsonl`). Just walk the checklist with the user.
 
 Quick triage:
 
@@ -400,4 +400,4 @@ It sends one test event using the first token in `.env`. Receiving it means the 
 ## Appendix: division of labor with the human manual
 
 - This manual (`docs/ai-operation-manual.md`): the step-by-step script the AI executes to configure things.
-- The human manual (`docs/user-manual.md`): full field descriptions, Provider background, the complete Docker config table, and detailed troubleshooting. When the user wants to understand "why", or you hit a case this manual does not cover, defer to the human manual.
+- The human manual (`docs/human-manual-en.md`): full field descriptions, Provider background, the complete Docker config table, and detailed troubleshooting. When the user wants to understand "why", or you hit a case this manual does not cover, defer to the human manual.
