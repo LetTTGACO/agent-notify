@@ -286,13 +286,13 @@ describe("config parsing", () => {
     ).toThrow("NTFY_ENDPOINT is required when AGENT_NOTIFY_PROVIDER=ntfy");
   });
 
-  it("defaults cooldown seconds to 10", () => {
+  it("defaults cooldown seconds to 60", () => {
     const config = parseConfig({
       AGENT_NOTIFY_TOKENS: "macbook:abc",
       BARK_ENDPOINT: "https://api.day.app/key",
     });
 
-    expect(config.cooldownSeconds).toBe(10);
+    expect(config.cooldownSeconds).toBe(60);
   });
 
   it("parses an explicit cooldown override", () => {

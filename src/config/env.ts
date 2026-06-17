@@ -124,7 +124,7 @@ const envSchema = z
     AGENT_NOTIFY_COOLDOWN_SECONDS: z.coerce
       .number()
       .nonnegative()
-      .default(10),
+      .default(60),
   })
   .superRefine((value, context) => {
     if (value.AGENT_NOTIFY_PROVIDER === "bark" && !value.BARK_ENDPOINT) {
