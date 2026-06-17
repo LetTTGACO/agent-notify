@@ -141,6 +141,12 @@ describe("config parsing", () => {
     expect(contents).toContain("AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS");
   });
 
+  it("passes cooldown window through Docker compose", () => {
+    const contents = readFileSync("deploy/docker/docker-compose.yml", "utf8");
+
+    expect(contents).toContain("AGENT_NOTIFY_COOLDOWN_SECONDS");
+  });
+
   it("documents ntfy provider config in the env example", () => {
     const contents = readFileSync(".env.example", "utf8");
 
@@ -284,5 +290,34 @@ describe("config parsing", () => {
         NTFY_ENDPOINT: "",
       }),
     ).toThrow("NTFY_ENDPOINT is required when AGENT_NOTIFY_PROVIDER=ntfy");
+  });
+
+  it("defaults cooldown seconds to 60", () => {
+    const config = parseConfig({
+      AGENT_NOTIFY_TOKENS: "macbook:abc",
+      BARK_ENDPOINT: "https://api.day.app/key",
+    });
+
+    expect(config.cooldownSeconds).toBe(60);
+  });
+
+  it("parses an explicit cooldown override", () => {
+    const config = parseConfig({
+      AGENT_NOTIFY_TOKENS: "macbook:abc",
+      BARK_ENDPOINT: "https://api.day.app/key",
+      AGENT_NOTIFY_COOLDOWN_SECONDS: "30",
+    });
+
+    expect(config.cooldownSeconds).toBe(30);
+  });
+
+  it("accepts zero cooldown to disable", () => {
+    const config = parseConfig({
+      AGENT_NOTIFY_TOKENS: "macbook:abc",
+      BARK_ENDPOINT: "https://api.day.app/key",
+      AGENT_NOTIFY_COOLDOWN_SECONDS: "0",
+    });
+
+    expect(config.cooldownSeconds).toBe(0);
   });
 });

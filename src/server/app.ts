@@ -16,6 +16,10 @@ import {
   CodexSessionPolicy,
   type CodexSessionPolicyDecision,
 } from "./codex-session-policy.js";
+import {
+  CooldownPolicy,
+  type CooldownPolicyDecision,
+} from "./cooldown-policy.js";
 
 export interface CreateAppOptions {
   tokens: NamedToken[];
@@ -27,6 +31,8 @@ export interface CreateAppOptions {
   claudeCodeSessionPolicy?: ClaudeCodeSessionPolicy;
   codexCompletionMinSeconds: number;
   codexSessionPolicy?: CodexSessionPolicy;
+  cooldownSeconds: number;
+  cooldownPolicy?: CooldownPolicy;
 }
 
 function trace(stage: string, fields: Record<string, unknown>): void {
@@ -57,6 +63,9 @@ export function createApp(options: CreateAppOptions): Hono {
     new CodexSessionPolicy({
       completionMinSeconds: options.codexCompletionMinSeconds,
     });
+  const cooldownPolicy =
+    options.cooldownPolicy ??
+    new CooldownPolicy({ cooldownSeconds: options.cooldownSeconds });
 
   async function safeLog(entry: Record<string, unknown>): Promise<void> {
     try {
@@ -117,6 +126,34 @@ export function createApp(options: CreateAppOptions): Hono {
       kind: "state",
       sessionId: decision.sessionId,
       sourceEvent: decision.sourceEvent,
+      reason: decision.reason,
+    });
+  }
+
+  async function logSuppressedCooldownEvent(
+    receivedAt: string,
+    tokenName: string,
+    decision: Extract<CooldownPolicyDecision, { action: "suppress" }>,
+    agent: string,
+    sourceEvent: string | undefined,
+  ): Promise<void> {
+    trace("suppressed", {
+      receivedAt,
+      tokenName,
+      agent,
+      sourceEvent,
+      reason: decision.reason,
+      kind: decision.kind,
+      sessionId: decision.sessionId,
+    });
+    await safeLog({
+      receivedAt,
+      status: "suppressed",
+      tokenName,
+      agent,
+      kind: decision.kind,
+      sessionId: decision.sessionId,
+      sourceEvent,
       reason: decision.reason,
     });
   }
@@ -227,6 +264,19 @@ export function createApp(options: CreateAppOptions): Hono {
       sourceEvent: formatted.sourceEvent,
       sessionId: formatted.sessionId,
     });
+
+    const cooldownDecision = cooldownPolicy.apply(formatted, auth.tokenName!);
+
+    if (cooldownDecision.action === "suppress") {
+      await logSuppressedCooldownEvent(
+        receivedAt,
+        auth.tokenName!,
+        cooldownDecision,
+        formatted.agent,
+        formatted.sourceEvent,
+      );
+      return c.json({ ok: true, notified: false });
+    }
 
     const eventId = `evt_${randomUUID()}`;
     const result = await options.provider.send(formatted.notification);
