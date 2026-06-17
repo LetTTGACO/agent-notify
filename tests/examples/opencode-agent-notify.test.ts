@@ -1,11 +1,31 @@
 import { describe, expect, it } from "vitest";
 import {
   createOpenCodeNotificationFilter,
+  parseAgentNotifyConfig,
   shouldNotify,
   summarizeOpenCodeEventForDebug,
 } from "../../examples/opencode/agent-notify.js";
 
 describe("OpenCode plugin example", () => {
+  it("defaults timeoutMs to 2000 when not configured", () => {
+    const config = parseAgentNotifyConfig({
+      serverUrl: "http://127.0.0.1:8787",
+      token: "secret",
+    });
+
+    expect(config.timeoutMs).toBe(2_000);
+  });
+
+  it("uses the configured timeoutMs", () => {
+    const config = parseAgentNotifyConfig({
+      serverUrl: "http://127.0.0.1:8787",
+      token: "secret",
+      timeoutMs: 5_000,
+    });
+
+    expect(config.timeoutMs).toBe(5_000);
+  });
+
   it("summarizes every event for plugin-side debug logs", () => {
     const raw = {
       type: "message.updated",
@@ -28,6 +48,32 @@ describe("OpenCode plugin example", () => {
     expect(shouldNotify({ type: "permission.asked" })).toBe(true);
     expect(shouldNotify({ type: "question.asked" })).toBe(true);
     expect(shouldNotify({ type: "message.updated" })).toBe(false);
+  });
+
+  it("defaults completion threshold to 120 when not configured", () => {
+    let nowMs = 1_000;
+    const filter = createOpenCodeNotificationFilter({
+      nowMs: () => nowMs,
+    });
+
+    filter.shouldNotify({
+      type: "session.status",
+      properties: {
+        sessionID: "session_1",
+        status: { type: "busy" },
+      },
+    });
+
+    nowMs += 121_000;
+
+    expect(
+      filter.shouldNotify({
+        type: "session.idle",
+        properties: {
+          sessionID: "session_1",
+        },
+      }),
+    ).toBe(true);
   });
 
   it("notifies when a busy session idles after the completion threshold", () => {

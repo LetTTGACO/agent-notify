@@ -67,7 +67,7 @@ function immediateShouldNotify(raw: unknown): boolean {
 export function createOpenCodeNotificationFilter(
   options: OpenCodeNotificationFilterOptions = {},
 ) {
-  const completionMinSeconds = options.completionMinSeconds ?? 0;
+  const completionMinSeconds = options.completionMinSeconds ?? 120;
   const nowMs = options.nowMs ?? Date.now;
   const sessions = new Map<string, SessionState>();
 
@@ -190,14 +190,6 @@ function readRequiredString(raw: Record<string, unknown>, key: string): string {
   return value;
 }
 
-function readRequiredNumber(raw: Record<string, unknown>, key: string): number {
-  const value = raw[key];
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    throw new Error(`agent-notify config requires ${key}`);
-  }
-  return value;
-}
-
 function readOptionalNumber(raw: Record<string, unknown>, key: string): number | undefined {
   const value = raw[key];
   if (value === undefined) return undefined;
@@ -216,16 +208,22 @@ function readOptionalString(raw: Record<string, unknown>, key: string): string |
   return value;
 }
 
-function readAgentNotifyConfig(): AgentNotifyConfig {
-  const configPath = join(homedir(), ".config", "opencode", "agent-notify.json");
-  const raw = JSON.parse(readFileSync(configPath, "utf8")) as Record<string, unknown>;
+const DEFAULT_TIMEOUT_MS = 2000;
+
+export function parseAgentNotifyConfig(raw: Record<string, unknown>): AgentNotifyConfig {
   return {
     serverUrl: readRequiredString(raw, "serverUrl"),
     token: readRequiredString(raw, "token"),
-    timeoutMs: readRequiredNumber(raw, "timeoutMs"),
+    timeoutMs: readOptionalNumber(raw, "timeoutMs") ?? DEFAULT_TIMEOUT_MS,
     completionMinSeconds: readOptionalNumber(raw, "completionMinSeconds"),
     debugLogPath: readOptionalString(raw, "debugLogPath"),
   };
+}
+
+function readAgentNotifyConfig(): AgentNotifyConfig {
+  const configPath = join(homedir(), ".config", "opencode", "agent-notify.json");
+  const raw = JSON.parse(readFileSync(configPath, "utf8")) as Record<string, unknown>;
+  return parseAgentNotifyConfig(raw);
 }
 
 async function notify(
