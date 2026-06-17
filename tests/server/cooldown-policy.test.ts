@@ -16,7 +16,7 @@ function permissionEvent(
       body: "x",
       urgency: "time_sensitive",
       group: "Claude Code",
-      icon: "https://claude.ai/favicon.ico",
+      icon: "https://cdn.jsdelivr.net/gh/LetTTGACO/agent-notify@main/assets/claude-code.png",
     },
   };
 }
@@ -32,7 +32,7 @@ function completedEvent(sessionId = "session_1"): FormattedAgentEvent {
       body: "x",
       urgency: "time_sensitive",
       group: "Claude Code",
-      icon: "https://claude.ai/favicon.ico",
+      icon: "https://cdn.jsdelivr.net/gh/LetTTGACO/agent-notify@main/assets/claude-code.png",
     },
   };
 }

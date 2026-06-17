@@ -119,7 +119,7 @@ describe("server app", () => {
       body: "Claude needs permission to use Bash",
       urgency: "time_sensitive",
       group: "Claude Code",
-      icon: "https://claude.ai/favicon.ico",
+      icon: "https://cdn.jsdelivr.net/gh/LetTTGACO/agent-notify@main/assets/claude-code.png",
     });
   });
 
@@ -387,7 +387,7 @@ describe("server app", () => {
     expect(mockProvider.send).toHaveBeenCalledWith(expect.objectContaining({
       urgency: "time_sensitive",
       group: "Claude Code",
-      icon: "https://claude.ai/favicon.ico",
+      icon: "https://cdn.jsdelivr.net/gh/LetTTGACO/agent-notify@main/assets/claude-code.png",
     }));
   });
 
@@ -440,7 +440,7 @@ describe("server app", () => {
       body: "API Error: quota exceeded",
       urgency: "time_sensitive",
       group: "Claude Code",
-      icon: "https://claude.ai/favicon.ico",
+      icon: "https://cdn.jsdelivr.net/gh/LetTTGACO/agent-notify@main/assets/claude-code.png",
     });
   });
 
@@ -509,7 +509,7 @@ describe("server app", () => {
       body: "Codex wants to run pnpm test",
       urgency: "time_sensitive",
       group: "Codex",
-      icon: "https://openai.com/favicon.ico",
+      icon: "https://cdn.jsdelivr.net/gh/LetTTGACO/agent-notify@main/assets/codex.png",
     });
   });
 
@@ -645,7 +645,7 @@ describe("server app", () => {
       body: "Codex finished the requested change.",
       urgency: "time_sensitive",
       group: "Codex",
-      icon: "https://openai.com/favicon.ico",
+      icon: "https://cdn.jsdelivr.net/gh/LetTTGACO/agent-notify@main/assets/codex.png",
     });
   });
 

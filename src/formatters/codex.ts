@@ -9,7 +9,8 @@ import {
 } from "../core/language.js";
 
 const MAX_BODY_LENGTH = 80;
-const CODEX_ICON_URL = "https://openai.com/favicon.ico";
+const CODEX_ICON_URL =
+  "https://cdn.jsdelivr.net/gh/LetTTGACO/agent-notify@main/assets/codex.png";
 
 type UnknownRecord = Record<string, unknown>;
 

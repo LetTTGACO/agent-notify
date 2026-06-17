@@ -24,7 +24,7 @@ describe("Claude Code formatter", () => {
         body: "Claude needs permission to use Bash",
         urgency: "time_sensitive",
         group: "Claude Code",
-        icon: "https://claude.ai/favicon.ico",
+        icon: "https://cdn.jsdelivr.net/gh/LetTTGACO/agent-notify@main/assets/claude-code.png",
       },
     });
   });
@@ -49,7 +49,7 @@ describe("Claude Code formatter", () => {
         body: "Claude is waiting for your input",
         urgency: "time_sensitive",
         group: "Claude Code",
-        icon: "https://claude.ai/favicon.ico",
+        icon: "https://cdn.jsdelivr.net/gh/LetTTGACO/agent-notify@main/assets/claude-code.png",
       },
     });
   });
@@ -94,7 +94,7 @@ describe("Claude Code formatter", () => {
         body: "You've hit your session limit; resets 1:10am (Asia/Shanghai)",
         urgency: "time_sensitive",
         group: "Claude Code",
-        icon: "https://claude.ai/favicon.ico",
+        icon: "https://cdn.jsdelivr.net/gh/LetTTGACO/agent-notify@main/assets/claude-code.png",
       },
     });
   });

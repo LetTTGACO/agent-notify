@@ -9,7 +9,8 @@ import {
 } from "../core/language.js";
 
 const MAX_BODY_LENGTH = 80;
-const CLAUDE_CODE_ICON_URL = "https://claude.ai/favicon.ico";
+const CLAUDE_CODE_ICON_URL =
+  "https://cdn.jsdelivr.net/gh/LetTTGACO/agent-notify@main/assets/claude-code.png";
 
 type UnknownRecord = Record<string, unknown>;
 
