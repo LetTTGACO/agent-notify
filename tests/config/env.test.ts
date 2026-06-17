@@ -230,4 +230,39 @@ describe("config parsing", () => {
       }),
     ).toThrow("BARK_ENDPOINT is required when AGENT_NOTIFY_PROVIDER=bark");
   });
+
+  it("ignores empty ntfy endpoint for Bark provider", () => {
+    const config = parseConfig({
+      AGENT_NOTIFY_TOKENS: "macbook:abc",
+      AGENT_NOTIFY_PROVIDER: "bark",
+      BARK_ENDPOINT: "https://api.day.app/key",
+      NTFY_ENDPOINT: "",
+      NTFY_TOKEN: "",
+    });
+
+    expect(config.provider).toBe("bark");
+    expect(config.barkEndpoint).toBe("https://api.day.app/key");
+  });
+
+  it("ignores empty Bark endpoint for ntfy provider", () => {
+    const config = parseConfig({
+      AGENT_NOTIFY_TOKENS: "macbook:abc",
+      AGENT_NOTIFY_PROVIDER: "ntfy",
+      NTFY_ENDPOINT: "https://ntfy.sh/agent_notify_xxx",
+      BARK_ENDPOINT: "",
+    });
+
+    expect(config.provider).toBe("ntfy");
+    expect(config.ntfyEndpoint).toBe("https://ntfy.sh/agent_notify_xxx");
+  });
+
+  it("rejects ntfy provider with empty ntfy endpoint", () => {
+    expect(() =>
+      parseConfig({
+        AGENT_NOTIFY_TOKENS: "macbook:abc",
+        AGENT_NOTIFY_PROVIDER: "ntfy",
+        NTFY_ENDPOINT: "",
+      }),
+    ).toThrow("NTFY_ENDPOINT is required when AGENT_NOTIFY_PROVIDER=ntfy");
+  });
 });

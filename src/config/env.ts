@@ -63,6 +63,17 @@ export type AppConfig =
       barkEndpoint?: undefined;
     });
 
+// Treat empty strings as undefined so optional fields like endpoint URLs that
+// are present but blank (e.g. `NTFY_ENDPOINT=` from .env.example or Docker's
+// `${NTFY_ENDPOINT:-}`) don't fail URL validation. Only applied to optional
+// string fields where absence is meaningful but an empty value is not.
+function emptyStringToUndefined<T extends z.ZodTypeAny>(schema: T) {
+  return z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    schema,
+  ) as unknown as T;
+}
+
 export function parseTokenList(value: string): NamedToken[] {
   const entries = value
     .split(",")
@@ -94,9 +105,9 @@ const envSchema = z
     AGENT_NOTIFY_LANGUAGE: z
       .enum(notificationLanguages)
       .default(defaultNotificationLanguage),
-    BARK_ENDPOINT: z.string().url().optional(),
-    NTFY_ENDPOINT: z.string().url().optional(),
-    NTFY_TOKEN: z.string().optional(),
+    BARK_ENDPOINT: emptyStringToUndefined(z.string().url().optional()),
+    NTFY_ENDPOINT: emptyStringToUndefined(z.string().url().optional()),
+    NTFY_TOKEN: emptyStringToUndefined(z.string().optional()),
     AGENT_NOTIFY_LOG_PATH: z.string().default("./data/events.jsonl"),
     AGENT_NOTIFY_LOG_RAW: z
       .enum(["true", "false", "1", "0"])
