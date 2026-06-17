@@ -18,6 +18,7 @@ const app = createApp({
   language: config.language,
   claudeCompletionMinSeconds: config.claudeCompletionMinSeconds,
   codexCompletionMinSeconds: config.codexCompletionMinSeconds,
+  cooldownSeconds: config.cooldownSeconds,
 });
 
 serve({
