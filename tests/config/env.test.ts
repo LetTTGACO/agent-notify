@@ -285,4 +285,33 @@ describe("config parsing", () => {
       }),
     ).toThrow("NTFY_ENDPOINT is required when AGENT_NOTIFY_PROVIDER=ntfy");
   });
+
+  it("defaults cooldown seconds to 10", () => {
+    const config = parseConfig({
+      AGENT_NOTIFY_TOKENS: "macbook:abc",
+      BARK_ENDPOINT: "https://api.day.app/key",
+    });
+
+    expect(config.cooldownSeconds).toBe(10);
+  });
+
+  it("parses an explicit cooldown override", () => {
+    const config = parseConfig({
+      AGENT_NOTIFY_TOKENS: "macbook:abc",
+      BARK_ENDPOINT: "https://api.day.app/key",
+      AGENT_NOTIFY_COOLDOWN_SECONDS: "30",
+    });
+
+    expect(config.cooldownSeconds).toBe(30);
+  });
+
+  it("accepts zero cooldown to disable", () => {
+    const config = parseConfig({
+      AGENT_NOTIFY_TOKENS: "macbook:abc",
+      BARK_ENDPOINT: "https://api.day.app/key",
+      AGENT_NOTIFY_COOLDOWN_SECONDS: "0",
+    });
+
+    expect(config.cooldownSeconds).toBe(0);
+  });
 });
