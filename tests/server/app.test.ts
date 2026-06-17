@@ -3,6 +3,7 @@ import { readFile, rm } from "node:fs/promises";
 import { createApp } from "../../src/server/app.js";
 import { ClaudeCodeSessionPolicy } from "../../src/server/claude-code-session-policy.js";
 import { CodexSessionPolicy } from "../../src/server/codex-session-policy.js";
+import { CooldownPolicy } from "../../src/server/cooldown-policy.js";
 import type { NotificationProvider } from "../../src/providers/types.js";
 
 function provider(): NotificationProvider {
@@ -21,6 +22,7 @@ function appOptions(mockProvider = provider()) {
     language: "en" as const,
     claudeCompletionMinSeconds: 0,
     codexCompletionMinSeconds: 0,
+    cooldownSeconds: 0,
   };
 }
 
@@ -763,5 +765,77 @@ describe("server app", () => {
       sessionId,
       reason: "state_recorded",
     });
+  });
+
+  it("suppresses a second consecutive permission within the cooldown window", async () => {
+    let nowMs = 1_000;
+    const mockProvider = provider();
+    const app = createApp({
+      ...appOptions(mockProvider),
+      cooldownSeconds: 10,
+      cooldownPolicy: new CooldownPolicy({
+        cooldownSeconds: 10,
+        nowMs: () => nowMs,
+      }),
+    });
+
+    const body = JSON.stringify({
+      agent: "claude-code",
+      raw: {
+        hook_event_name: "Notification",
+        notification_type: "permission_prompt",
+        session_id: "claude_perm",
+        message: "Claude needs permission",
+      },
+    });
+    const headers = {
+      "content-type": "application/json",
+      authorization: "Bearer secret",
+    };
+
+    const first = await app.request("/events", { method: "POST", body, headers });
+    expect(first.status).toBe(200);
+    expect(await first.json()).toMatchObject({ ok: true });
+    expect(mockProvider.send).toHaveBeenCalledOnce();
+
+    nowMs += 3_000;
+
+    const second = await app.request("/events", { method: "POST", body, headers });
+    expect(second.status).toBe(200);
+    expect(await second.json()).toEqual({ ok: true, notified: false });
+    expect(mockProvider.send).toHaveBeenCalledOnce();
+  });
+
+  it("sends both permissions when cooldown is disabled", async () => {
+    let nowMs = 1_000;
+    const mockProvider = provider();
+    const app = createApp({
+      ...appOptions(mockProvider),
+      cooldownSeconds: 0,
+      cooldownPolicy: new CooldownPolicy({
+        cooldownSeconds: 0,
+        nowMs: () => nowMs,
+      }),
+    });
+
+    const body = JSON.stringify({
+      agent: "claude-code",
+      raw: {
+        hook_event_name: "Notification",
+        notification_type: "permission_prompt",
+        session_id: "claude_perm2",
+        message: "Claude needs permission",
+      },
+    });
+    const headers = {
+      "content-type": "application/json",
+      authorization: "Bearer secret",
+    };
+
+    await app.request("/events", { method: "POST", body, headers });
+    nowMs += 3_000;
+    await app.request("/events", { method: "POST", body, headers });
+
+    expect(mockProvider.send).toHaveBeenCalledTimes(2);
   });
 });
