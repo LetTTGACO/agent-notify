@@ -30,8 +30,6 @@ The adapter is fail-safe: server errors never block the agent. Long-task complet
 | Linux desktop | ❌ | ✅ |
 | Web browser | ❌ | ✅ |
 
-Only one `AGENT_NOTIFY_PROVIDER` is active at a time; `bark` is the default.
-
 ## Documentation
 
 The manuals below are the installation guides — start there for full setup, including adapter installation, hook configuration, and Docker deployment.
