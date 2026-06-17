@@ -121,6 +121,20 @@ describe("config parsing", () => {
     expect(contents).toContain("AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS");
   });
 
+  it("documents ntfy provider config in the env example", () => {
+    const contents = readFileSync(".env.example", "utf8");
+
+    expect(contents).toContain("NTFY_ENDPOINT=");
+    expect(contents).toContain("NTFY_TOKEN=");
+  });
+
+  it("passes ntfy provider config through Docker compose", () => {
+    const contents = readFileSync("deploy/docker/docker-compose.yml", "utf8");
+
+    expect(contents).toContain("NTFY_ENDPOINT");
+    expect(contents).toContain("NTFY_TOKEN");
+  });
+
   it("loads missing env vars from a .env file", () => {
     const tmp = mkdtempSync(join(tmpdir(), "agent-notify-"));
     writeFileSync(join(tmp, ".env"), "AGENT_NOTIFY_TOKENS=macbook:abc\nBARK_ENDPOINT=https://api.day.app/key\n# comment\n\nEMPTY=\n");

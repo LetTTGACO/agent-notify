@@ -49,6 +49,12 @@ https://api.day.app/你的设备Key
 
 如果你使用自建 Bark 服务，也可以填你的自建 endpoint。
 
+如果你使用 ntfy：
+
+1. 在手机或桌面 ntfy 客户端订阅同一个 topic。
+2. public `ntfy.sh` 的 topic 名称相当于共享密钥，请使用难猜的名称。
+3. 自建 ntfy 且 topic 需要认证时，设置 `NTFY_TOKEN`。
+
 ## 第一步：安装依赖
 
 在项目目录里执行：
@@ -76,14 +82,18 @@ AGENT_NOTIFY_LANGUAGE=en
 AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS=120
 AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS=120
 BARK_ENDPOINT=https://api.day.app/example-device-key
+NTFY_ENDPOINT=
+NTFY_TOKEN=
 AGENT_NOTIFY_LOG_PATH=./data/events.jsonl
 AGENT_NOTIFY_LOG_RAW=false
 ```
 
 你需要改的是：
 
-- `AGENT_NOTIFY_TOKENS`：服务端允许哪些客户端发事件，格式是 `名称:token`。
-- `BARK_ENDPOINT`：换成你的 Bark endpoint。
+- `AGENT_NOTIFY_PROVIDER`：通知 provider，默认 `bark`，也可以设为 `ntfy`。
+- `BARK_ENDPOINT`：使用 Bark 时换成你的 Bark endpoint。
+- `NTFY_ENDPOINT`：使用 ntfy 时填写完整 topic URL，例如 `https://ntfy.sh/agent_notify_xxx`。
+- `NTFY_TOKEN`：ntfy 受保护 topic 的可选 Bearer token；公开 topic 可留空。
 - `AGENT_NOTIFY_LANGUAGE`：通知文案语言，支持 `en` 和 `zh`，默认 `en`。
 - `AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS`：Claude Code 完成通知阈值，单位秒。设为 `0` 表示不推送 Claude Code 完成通知。
 - `AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS`：Codex 完成通知阈值，单位秒。设为 `0` 表示不推送 Codex 完成通知。

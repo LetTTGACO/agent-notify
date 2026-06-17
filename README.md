@@ -9,7 +9,7 @@ For a step-by-step Chinese guide, see [AgentNotify 人类使用手册](docs/user
 - OpenCode plugin example
 - Claude Code and Codex command-hook adapter examples
 - Server-side OpenCode, Claude Code, and Codex formatters
-- Bark provider
+- Bark and ntfy providers
 - Hono `/events` and `/health`
 - JSONL logs
 - `agent-notify test`
@@ -30,6 +30,25 @@ In another terminal:
 pnpm agent-notify doctor
 pnpm agent-notify test
 ```
+
+## Notification Provider
+
+Bark remains the default provider:
+
+```bash
+AGENT_NOTIFY_PROVIDER=bark
+BARK_ENDPOINT=https://api.day.app/example-device-key
+```
+
+To use ntfy instead, subscribe to the same topic in your ntfy client and configure:
+
+```bash
+AGENT_NOTIFY_PROVIDER=ntfy
+NTFY_ENDPOINT=https://ntfy.sh/agent_notify_xxx
+NTFY_TOKEN=
+```
+
+Use a hard-to-guess topic name on public `ntfy.sh`. For protected self-hosted topics, set `NTFY_TOKEN` to a publish token.
 
 ## OpenCode Adapter
 
