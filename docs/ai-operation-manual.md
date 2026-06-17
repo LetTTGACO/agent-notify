@@ -96,8 +96,8 @@ Interpretation:
 | --- | --- | --- |
 | `Darwin` | macOS | `~/.config/` (i.e. `$HOME/.config/`) |
 | `Linux` | Linux | `~/.config/` (i.e. `$HOME/.config/`) |
-| `MINGW*` / `MSYS*` / `CYGWIN*` | Windows (Git Bash, etc.) | `$APPDATA/` (e.g. `C:\Users\you\AppData\Roaming\`) |
-| — (plain Windows PowerShell/CMD) | Windows | `%APPDATA%` |
+| `MINGW*` / `MSYS*` / `CYGWIN*` | Windows (Git Bash, etc.) | `~/.config/` (i.e. `C:\Users\you\.config\`) |
+| — (plain Windows PowerShell/CMD) | Windows | `%USERPROFILE%\.config\` (i.e. `C:\Users\you\.config\`) |
 
 > If `uname` is unavailable (plain Windows), treat it as Windows.
 
@@ -199,7 +199,7 @@ The default config directories are:
 
 | Agent | Directory to check (macOS / Linux) | Directory to check (Windows) |
 | --- | --- | --- |
-| OpenCode | `~/.config/opencode/` | `%APPDATA%\opencode\` |
+| OpenCode | `~/.config/opencode/` | `~/.config\opencode\` |
 | Claude Code | `~/.claude/` | `~/.claude\` |
 | Codex | `~/.codex/` | `~/.codex\` |
 
@@ -209,12 +209,12 @@ A missing config directory does not prove the agent can never be used, but it do
 
 | Purpose | macOS / Linux | Windows |
 | --- | --- | --- |
-| agent-notify config dir | `$HOME/.config/agent-notify/` | `$APPDATA/agent-notify/` |
-| OpenCode dir | `$HOME/.config/opencode/` | `$APPDATA/opencode/` |
+| agent-notify config dir | `$HOME/.config/agent-notify/` | `$HOME/.config/agent-notify/` |
+| OpenCode dir | `$HOME/.config/opencode/` | `$HOME/.config/opencode/` |
 | Claude Code settings | `$HOME/.claude/settings.json` | `$HOME/.claude/settings.json` (managed by Claude Code) |
 | Codex hooks | `$HOME/.codex/hooks.json` | `$HOME/.codex/hooks.json` |
 
-> Commands below use the macOS/Linux form `$HOME/.config/...`. On Windows, replace `$HOME/.config` with `$APPDATA` (Git Bash) or the equivalent path.
+> Commands below use the macOS/Linux form `$HOME/.config/...`. On Windows the adapters read the same `$HOME/.config/...` path (Node resolves `os.homedir()` to `C:\Users\you`), so keep `$HOME/.config` — do **not** substitute `$APPDATA`, or the adapters will not find their config.
 
 ### 3.1 OpenCode
 
