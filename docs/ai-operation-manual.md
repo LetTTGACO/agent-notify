@@ -1,6 +1,6 @@
 # AgentNotify AI Operation Manual
 
-This manual is written for an **AI agent** (e.g. Claude Code). When you are asked to "help the user set up AgentNotify", follow this manual.
+This manual is written for an **AI agent**. When you are asked to "help the user set up AgentNotify", follow this manual.
 
 ## How to use this manual
 
@@ -14,7 +14,25 @@ Three hard conventions run through the entire manual. Never violate them:
 
 3. **Ask before acting.** Provider choice, which agents to integrate, whether to use Docker — these decisions must be put to the user before you act. You may recommend, but not decide for them.
 
-The order is fixed: **Step 0 → 1 → 2 → 3 → 4 → 5**. Only deploy the parts for the agents the user selected in Step 0.
+The order is fixed: **Before Step 0 if needed → Step 0 → 1 → 2 → 3 → 4 → 5**. Only deploy the parts for the agents the user selected in Step 0.
+
+---
+
+## Before Step 0 — Make sure you have a usable local checkout
+
+If you are reading this manual from a GitHub URL, a pasted document link, or any context where your current working directory is not already the AgentNotify project root, you must first establish a usable local checkout.
+
+Do not assume the repository is already cloned. Also do not assume it is missing just because your current directory is wrong.
+
+First determine which case applies:
+
+- You are already inside the AgentNotify project root.
+- The repository exists locally, but you are not currently inside it.
+- The repository is not cloned on this machine yet.
+
+Only continue to Step 0 after your working directory is the AgentNotify project root.
+
+If the repository already exists locally, change into that directory. If it does not exist yet, ask the user where they want it cloned, recommend a simple default such as `~/agent-notify`, then clone the GitHub repository and enter it.
 
 ---
 
@@ -89,7 +107,7 @@ Every "copy to where" / "where does the config file go" below is resolved via th
 
 ## Step 2 — Deploy the server (minimal defaults)
 
-Prerequisite: the user's machine has Node.js 20+ and pnpm, and the project is cloned with the working directory inside it. If deps are not installed:
+Prerequisite: the user's machine has Node.js 20+ and pnpm. Before Step 0 already ensured that your working directory is the AgentNotify project root. If deps are not installed:
 
 ```bash
 pnpm install
