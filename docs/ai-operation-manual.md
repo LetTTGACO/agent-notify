@@ -145,7 +145,7 @@ Explain to the user:
 - `AGENT_NOTIFY_TOKENS` has the format `name:token` — the colon is required. The `macbook:` part is a name label (keep it or change to anything); the part **after the colon** is the real token. Remember it — Step 3/4's agent `token` must be this exact same string.
 - Use a hard-to-guess random string for the token.
 - **`AGENT_NOTIFY_LANGUAGE` — judge this yourself from the conversation, do not ask.** It defaults to `en` (English). If the user is talking to you in Chinese (or asks for Chinese notifications), have them set it to `zh`; otherwise leave it `en`. You decide based on the language the user is using, then tell them the one value to set — no surveying.
-- Every other line (`AGENT_NOTIFY_HOST`, `AGENT_NOTIFY_PORT`, `AGENT_NOTIFY_*_COMPLETION_MIN_SECONDS`, `AGENT_NOTIFY_LOG_PATH`, `AGENT_NOTIFY_LOG_RAW`, and the inactive Provider's endpoint) **stays at default — do not touch**.
+- Every other line (`AGENT_NOTIFY_HOST`, `AGENT_NOTIFY_PORT`, `AGENT_NOTIFY_*_COMPLETION_MIN_SECONDS`, `AGENT_NOTIFY_COOLDOWN_SECONDS`, `AGENT_NOTIFY_LOG_PATH`, `AGENT_NOTIFY_LOG_RAW`, and the inactive Provider's endpoint) **stays at default — do not touch**. Note `AGENT_NOTIFY_COOLDOWN_SECONDS` defaults to `60` and is on by default — it suppresses back-to-back permission/question notifications within a 60s window per session. Only mention it if the user complains that consecutive permission/question notifications are too noisy (then suggest tuning it, or `0` to disable); otherwise leave it.
 
 > Do not ask the user what the token/endpoint is, and do not write these values into the conversation or any file. Only confirm "done yet?".
 

@@ -6,6 +6,7 @@ AgentNotify is a personal notification hub for AI coding agents. It receives hoo
 
 - Receives raw hook events from OpenCode, Claude Code, and Codex.
 - Formats short, action-focused notifications server-side (permission requests, prompts, errors, long-task completion).
+- Cooldown-debounces back-to-back permission/question notifications within a session, so a rapid back-and-forth doesn't flood your phone (tunable, default 60s, off at 0).
 - Pushes through Bark (iPhone / Apple Watch) or ntfy (cross-platform).
 - Logs safe event summaries to JSONL. Raw payload logging is off by default.
 

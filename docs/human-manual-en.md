@@ -34,6 +34,16 @@ Codex supports these hooks:
 - `PermissionRequest`: pushes when Codex needs user permission; not pushed when `permission_mode` is `bypassPermissions`.
 - `Stop`: pushes a completion notification after the task exceeds the server completion threshold (default `120` seconds).
 
+## Interaction cooldown (noise reduction)
+
+When you handle several permissions or questions in a row at the computer, back-to-back notifications get noisy. AgentNotify applies a server-side cooldown to `permission` / `question` notifications:
+
+- The first permission/question notification in an agent session is pushed normally.
+- Within the cooldown window afterwards (default `60` seconds), same-type notifications from that session are suppressed.
+- Every cooled event refreshes the window, so it stays silent throughout an active back-and-forth; only after you stop for longer than the window does the next event notify again.
+
+The cooldown is scoped per `token + agent + session`, so parallel sessions and different agents don't interfere. `completed` / `failed` notifications are not cooled (they are throttled by their own completion thresholds). When a session id is missing, the event passes through to avoid swallowing the first notice. The window is tunable via `AGENT_NOTIFY_COOLDOWN_SECONDS`; set it to `0` to disable.
+
 ## Notification providers: Bark and ntfy
 
 After formatting an event, AgentNotify pushes it through a provider to your device. Two providers are supported, selected via `AGENT_NOTIFY_PROVIDER` in `.env`; the default is `bark`.
@@ -110,6 +120,7 @@ AGENT_NOTIFY_PROVIDER=bark
 AGENT_NOTIFY_LANGUAGE=en
 AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS=120
 AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS=120
+AGENT_NOTIFY_COOLDOWN_SECONDS=60
 BARK_ENDPOINT=https://api.day.app/example-device-key
 NTFY_ENDPOINT=
 NTFY_TOKEN=
@@ -126,6 +137,7 @@ What you need to change:
 - `AGENT_NOTIFY_LANGUAGE`: notification text language, `en` or `zh`, default `en`.
 - `AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS`: Claude Code completion threshold in seconds, default `120`. After a task runs longer than this, a completion notification is pushed when it ends; set `0` to disable Claude Code completion notifications.
 - `AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS`: Codex completion threshold in seconds, default `120`. Same behavior as above; set `0` to disable Codex completion notifications.
+- `AGENT_NOTIFY_COOLDOWN_SECONDS`: interaction cooldown window in seconds, default `60`. The noise-reduction window for back-to-back permission/question notifications; set `0` to disable. See "Interaction cooldown (noise reduction)" above.
 
 Consider changing `dev-token-change-me` to a string only you know, e.g.:
 

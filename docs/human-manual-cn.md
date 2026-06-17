@@ -34,6 +34,16 @@ Codex 侧支持这些 hooks：
 - `PermissionRequest`：Codex 需要用户批准权限时推送；`permission_mode` 为 `bypassPermissions` 时不推送
 - `Stop`：长任务达到服务端完成阈值（默认 `120` 秒）后推送完成通知
 
+## 交互冷却降噪
+
+当你在电脑前连续处理多个权限或问答时，连发通知会很吵。AgentNotify 在服务端对 `permission` / `question` 类通知做冷却降噪：
+
+- 同一 agent 会话内，第一个权限/问答通知正常推送。
+- 之后的冷却窗口内（默认 `60` 秒），同一会话的同类通知被静默。
+- 每个冷却事件都会刷新窗口，所以连续对话期间一直静默；只有你停手超过窗口长度，下一条才重新通知。
+
+冷却按「token + agent + session」维度隔离，不同会话、不同 agent 互不影响；`completed` / `failed` 等完成态通知不进冷却（由各自的完成阈值节流）。缺 session 时放行，避免漏响首条。窗口可通过 `AGENT_NOTIFY_COOLDOWN_SECONDS` 调整，设为 `0` 关闭。
+
 ## 通知方式：Bark 与 ntfy
 
 AgentNotify 把事件格式化后，通过 provider 推到你的设备。当前支持两种 provider，用 `.env` 里的 `AGENT_NOTIFY_PROVIDER` 选择，默认 `bark`。
@@ -110,6 +120,7 @@ AGENT_NOTIFY_PROVIDER=bark
 AGENT_NOTIFY_LANGUAGE=en
 AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS=120
 AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS=120
+AGENT_NOTIFY_COOLDOWN_SECONDS=60
 BARK_ENDPOINT=https://api.day.app/example-device-key
 NTFY_ENDPOINT=
 NTFY_TOKEN=
@@ -126,6 +137,7 @@ AGENT_NOTIFY_LOG_RAW=false
 - `AGENT_NOTIFY_LANGUAGE`：通知文案语言，支持 `en` 和 `zh`，默认 `en`。
 - `AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS`：Claude Code 完成通知阈值，单位秒，默认 `120`。任务运行超过该秒数后，结束时推送完成通知；设为 `0` 关闭 Claude Code 完成通知。
 - `AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS`：Codex 完成通知阈值，单位秒，默认 `120`。任务运行超过该秒数后，结束时推送完成通知；设为 `0` 关闭 Codex 完成通知。
+- `AGENT_NOTIFY_COOLDOWN_SECONDS`：交互冷却窗口，单位秒，默认 `60`。连续权限/问答通知的冷却降噪窗口，设为 `0` 关闭。详见上文「交互冷却降噪」。
 
 建议把 `dev-token-change-me` 改成只有你知道的字符串。例如：
 

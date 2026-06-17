@@ -141,6 +141,12 @@ describe("config parsing", () => {
     expect(contents).toContain("AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS");
   });
 
+  it("passes cooldown window through Docker compose", () => {
+    const contents = readFileSync("deploy/docker/docker-compose.yml", "utf8");
+
+    expect(contents).toContain("AGENT_NOTIFY_COOLDOWN_SECONDS");
+  });
+
   it("documents ntfy provider config in the env example", () => {
     const contents = readFileSync(".env.example", "utf8");
 
