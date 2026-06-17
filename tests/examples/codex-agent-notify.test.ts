@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-const adapter = await import("../../examples/codex/agent-notify.mjs");
+const adapter = await import("../../examples/codex/codex-agent-notify.mjs");
 
 describe("Codex adapter example", () => {
   it("summarizes every event for adapter-side debug logs", () => {
@@ -50,6 +50,25 @@ describe("Codex adapter example", () => {
       }),
     ).toBe(false);
     expect(adapter.shouldForwardCodexEvent({})).toBe(false);
+  });
+
+  it("defaults timeoutMs to 2000 when not configured", () => {
+    const config = adapter.parseCodexConfig({
+      serverUrl: "http://127.0.0.1:8787",
+      token: "secret",
+    });
+
+    expect(config.timeoutMs).toBe(2_000);
+  });
+
+  it("uses the configured timeoutMs", () => {
+    const config = adapter.parseCodexConfig({
+      serverUrl: "http://127.0.0.1:8787",
+      token: "secret",
+      timeoutMs: 5_000,
+    });
+
+    expect(config.timeoutMs).toBe(5_000);
   });
 
   it("posts forwarded events to the existing /events endpoint", async () => {

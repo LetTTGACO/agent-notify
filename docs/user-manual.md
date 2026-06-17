@@ -17,7 +17,7 @@ AgentNotify 是一个本地通知中转站：
 - `permission.asked`
 - `question.asked`
 - `session.error`
-- `session.idle`：仅在插件配置了 `completionMinSeconds` 且本轮耗时达到阈值时转发
+- `session.idle`：本轮耗时达到完成阈值（默认 `120` 秒，可在插件配置 `completionMinSeconds` 调整）时转发
 
 也就是说，它不会把 OpenCode 的每一步都推给你，只会推需要你注意的事件。
 
@@ -25,14 +25,14 @@ Claude Code 侧支持这些 hooks：
 
 - `UserPromptSubmit`：只用于服务端记录本轮开始时间，不推送手机通知
 - `Notification`：Claude Code 需要权限批准或处理 MCP 交互时推送；普通 `idle_prompt` 默认忽略
-- `Stop`：长任务达到服务端阈值后推送完成通知
+- `Stop`：长任务达到服务端完成阈值（默认 `120` 秒）后推送完成通知
 - `StopFailure`：任务失败或限额错误时推送
 
 Codex 侧支持这些 hooks：
 
 - `UserPromptSubmit`：只用于服务端记录本轮开始时间，不推送手机通知
 - `PermissionRequest`：Codex 需要用户批准权限时推送；`permission_mode` 为 `bypassPermissions` 时不推送
-- `Stop`：长任务达到服务端阈值后推送完成通知
+- `Stop`：长任务达到服务端完成阈值（默认 `120` 秒）后推送完成通知
 
 ## 你需要准备什么
 
@@ -92,11 +92,11 @@ AGENT_NOTIFY_LOG_RAW=false
 
 - `AGENT_NOTIFY_PROVIDER`：通知 provider，默认 `bark`，也可以设为 `ntfy`。
 - `BARK_ENDPOINT`：使用 Bark 时换成你的 Bark endpoint。
-- `NTFY_ENDPOINT`：使用 ntfy 时填写完整 topic URL，例如 `https://ntfy.sh/agent_notify_xxx`。
+- `NTFY_ENDPOINT`：使用 ntfy 时填写完整 topic URL，例如 `https://ntfy.sh/agent_notify_long_random_text`
 - `NTFY_TOKEN`：ntfy 受保护 topic 的可选 Bearer token；公开 topic 可留空。
 - `AGENT_NOTIFY_LANGUAGE`：通知文案语言，支持 `en` 和 `zh`，默认 `en`。
-- `AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS`：Claude Code 完成通知阈值，单位秒。设为 `0` 表示不推送 Claude Code 完成通知。
-- `AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS`：Codex 完成通知阈值，单位秒。设为 `0` 表示不推送 Codex 完成通知。
+- `AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS`：Claude Code 完成通知阈值，单位秒，默认 `120`。任务运行超过该秒数后，结束时推送完成通知；设为 `0` 关闭 Claude Code 完成通知。
+- `AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS`：Codex 完成通知阈值，单位秒，默认 `120`。任务运行超过该秒数后，结束时推送完成通知；设为 `0` 关闭 Codex 完成通知。
 
 建议把 `dev-token-change-me` 改成只有你知道的字符串。例如：
 
@@ -104,7 +104,7 @@ AGENT_NOTIFY_LOG_RAW=false
 AGENT_NOTIFY_TOKENS=macbook:my-long-random-token
 ```
 
-后面配置 OpenCode 插件时，`agent-notify.json` 里的 `token` 必须填同一个 token，也就是这里冒号后面的部分。
+后面配置 OpenCode / Claude Code / Codex 插件时，各自 `json 配置文件` 里的 `token` 必须填同一个 token，也就是这里冒号后面的部分。
 
 ## 第三步：启动 AgentNotify
 
@@ -148,7 +148,28 @@ pnpm agent-notify test
 
 如果配置正确，你的手机应该收到一条测试通知。
 
-## 第五步：把插件装进 OpenCode
+## 第五步：接入你的 AI coding agent
+
+三个 agent 全部接入后，本机新增的文件大致如下：
+
+```text
+~/.config/
+├── agent-notify/                      
+│   ├── claude-code.json               # Claude Code adapter 配置
+│   ├── claude-code-agent-notify.mjs   # Claude Code adapter 文件
+│   ├── codex.json                     # Codex adapter 配置
+│   └── codex-agent-notify.mjs         # Codex adapter 文件
+└── opencode/                          # OpenCode 目录
+    ├── agent-notify.json              # OpenCode 插件配置
+    └── plugins/
+        └── agent-notify.ts            # OpenCode 插件文件
+```
+
+Claude Code 的 hooks 写在其配置文件中（用户级 `~/.claude/settings.json` 或项目级 `.claude/settings.json`）
+
+Codex 的 hooks 写在 `~/.codex/hooks.json`，这两处只存指向上面 adapter 文件的 command，不会复制 adapter 本身。
+
+## OpenCode 接入
 
 项目里已经提供了 OpenCode 插件示例：
 
@@ -161,23 +182,25 @@ examples/opencode/agent-notify.ts
 - 全局安装：复制到 `~/.config/opencode/plugins/`
 - 只给当前项目安装：复制到当前项目的 `.opencode/plugins/`
 
-例如全局安装：
+全局安装：
 
 ```bash
 mkdir -p ~/.config/opencode/plugins
 cp examples/opencode/agent-notify.ts ~/.config/opencode/plugins/agent-notify.ts
 ```
 
-例如只给某个项目安装：
+### 1. 确认 AgentNotify 服务端配置
+
+先确认 `.env` 里有服务端 token 和 Bark endpoint/Ntfy endpoint：
 
 ```bash
-mkdir -p .opencode/plugins
-cp /ABS/PATH/agent-notify/examples/opencode/agent-notify.ts .opencode/plugins/agent-notify.ts
+AGENT_NOTIFY_TOKENS=macbook:my-long-random-token
+AGENT_NOTIFY_PROVIDER=bark 或者 ntfy
+BARK_ENDPOINT=https://api.day.app/你的设备Key
+NTFY_ENDPOINT=https://ntfy.sh/agent_notify_long_random_text
 ```
 
-注意：第二种命令要在你准备用 OpenCode 工作的目标项目里执行。
-
-## 第六步：配置 OpenCode 插件
+### 2. 安装 OpenCode 插件
 
 OpenCode 插件会读取这个配置文件：
 
@@ -185,35 +208,31 @@ OpenCode 插件会读取这个配置文件：
 ~/.config/opencode/agent-notify.json
 ```
 
-创建配置文件：
+从示例复制一份再改（在 AgentNotify 项目目录里执行）：
 
 ```bash
 mkdir -p ~/.config/opencode
+cp examples/opencode/agent-notify.json ~/.config/opencode/agent-notify.json
 ```
 
-文件内容：
+复制后的最小配置如下：
 
 ```json
 {
   "serverUrl": "http://127.0.0.1:8787",
-  "token": "my-long-random-token",
-  "timeoutMs": 2000,
-  "completionMinSeconds": 120,
-  "debugLogPath": "/ABS/PATH/.config/opencode/agent-notify-debug.jsonl"
+  "token": "my-long-random-token"
 }
 ```
 
-其中：
+- `serverUrl`：必填。AgentNotify 服务端地址。
+- `token`：必填。必须和 `.env` 里 `AGENT_NOTIFY_TOKENS` 的 token 部分一致，也就是冒号后面的部分。
+- `completionMinSeconds`：可选，默认 `120`（即默认开启）。会话耗时达到该秒数后，任务完成才发送一次完成通知；设为 `0` 关闭完成通知。
+- `timeoutMs`：可选。插件请求超时时间，单位毫秒，默认 `2000`。
+- `debugLogPath`：可选。配置后，OpenCode 插件会把自己看到的每个事件写进这个 JSONL 文件，包含原始 OpenCode 事件，方便排查事件是否进入插件。默认不填。
 
-- `serverUrl`：AgentNotify 服务地址。
-- `token`：必须等于 `.env` 里 `AGENT_NOTIFY_TOKENS` 的 token 部分。
-- `timeoutMs`：插件请求超时时间，单位是毫秒。
-- `completionMinSeconds`：可选。大于 `0` 时，OpenCode 会话从 `busy` 到 `idle` 的耗时达到这个秒数后，才发送一次完成通知；不配置或设为 `0` 时，不发送完成通知。
-- `debugLogPath`：可选。配置后，OpenCode 插件会把自己看到的每个事件写进这个 JSONL 文件，包含原始 OpenCode 事件，方便排查事件是否进入插件。
+如果这个文件不存在、JSON 写坏了，或者缺少必填字段，插件会初始化失败。OpenCode 会把插件失败限制在插件边界内，不会因为 AgentNotify 配错就阻塞你的正常 OpenCode 工作。
 
-如果这个文件不存在、JSON 写坏了，或者缺少字段，插件会初始化失败。OpenCode 会把插件失败限制在插件边界内，不会因为 AgentNotify 配错就阻塞你的正常 OpenCode 工作。
-
-## 第七步：实际验证 OpenCode 通知
+### 3. 验证 OpenCode 通知
 
 保持 AgentNotify 服务运行：
 
@@ -227,50 +246,37 @@ pnpm dev
 opencode
 ```
 
-在 OpenCode 里触发一次需要权限的操作。例如让它执行一个需要确认的 shell 命令。插件捕捉到 `permission.v2.asked` 或 `permission.asked` 后，会向 AgentNotify 发送事件，AgentNotify 再发 Bark 通知。
+在 OpenCode 里触发一次需要权限的操作。例如对OpenCode说：随便mock一个question选项。插件捕捉到后，会向 AgentNotify 发送事件以及通知。
 
-如果 OpenCode 需要你在几个选项里做选择，插件捕捉到 `question.asked` 后也会发送通知。
+如果想验证长任务完成通知，可以在 `~/.config/opencode/agent-notify.json` 里临时加一行把阈值调低：
 
-如果你配置了 `completionMinSeconds`，OpenCode 进入 `busy` 后运行时间达到阈值，并随后触发 `session.idle` 时，也会收到一条完成通知。短对话、未达到阈值的运行、以及同一轮已经报错后的 `idle` 不会触发完成通知。
-
-收到通知时，大致会是：
-
-```text
-Approve bash
-pnpm test
+```json
+{
+  "serverUrl": "http://127.0.0.1:8787",
+  "token": "my-long-random-token",
+  "completionMinSeconds": 5
+}
 ```
 
-如果 `.env` 设置了 `AGENT_NOTIFY_LANGUAGE=zh`，同一类通知会显示为：
-
-```text
-批准运行命令
-pnpm test
-```
-
-如果 OpenCode 会话报错，你会收到标题为 `Failed` 的通知。
+重启 OpenCode 后，让 OpenCode 跑一个超过 5 秒的任务。任务结束时应该收到完成通知。验证完删掉这行（或改回 `120`）即可恢复默认阈值。
 
 ## Claude Code 接入
 
-Claude Code 使用 command hooks 调用示例 adapter。这个 adapter 不进入正式 CLI；
-它只负责读取 Claude Code hook stdin，并把事件包装成现有 `/events` 请求。
-长任务完成阈值由 AgentNotify 服务端记录和判断。
-
 ### 1. 确认 AgentNotify 服务端配置
 
-先确认 `.env` 里有服务端 token 和 Bark endpoint：
+先确认 `.env` 里有服务端 token 和 Bark endpoint/Ntfy endpoint：
 
 ```bash
 AGENT_NOTIFY_TOKENS=macbook:my-long-random-token
+AGENT_NOTIFY_PROVIDER=bark 或者 ntfy
 BARK_ENDPOINT=https://api.day.app/你的设备Key
-```
-
-如果你想收到 Claude Code 长任务完成通知，再设置一个阈值。例如任务运行超过 120 秒后，`Stop` 才会推送完成通知：
-
-```bash
+NTFY_ENDPOINT=https://ntfy.sh/agent_notify_long_random_text
 AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS=120
 ```
 
-如果设为 `0` 或不配置，Claude Code 的权限、MCP 交互、失败通知仍然会发送，但不会发送完成通知。
+长任务完成通知默认开启，阈值为 `120` 秒：任务运行超过 120 秒后，结束时才会推送完成通知。
+
+如果想关掉完成通知，把阈值设为 `0`。设为 `0` 后，Claude Code 的权限、MCP 交互、失败通知仍然会发送，只是不再发送完成通知。
 
 启动服务：
 
@@ -278,7 +284,7 @@ AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS=120
 pnpm dev
 ```
 
-### 2. 创建 Claude Code adapter 配置
+### 2. 安装 Claude Code 插件
 
 创建配置目录：
 
@@ -286,57 +292,45 @@ pnpm dev
 mkdir -p ~/.config/agent-notify
 ```
 
-创建 `~/.config/agent-notify/claude-code.json`：
+从示例复制一份再改（在 AgentNotify 项目目录里执行）：
+
+```bash
+mkdir -p ~/.config/agent-notify
+cp examples/claude-code/claude-code.json ~/.config/agent-notify/claude-code.json
+```
+
+复制后的最小配置长这样：
 
 ```json
 {
   "serverUrl": "http://127.0.0.1:8787",
-  "token": "my-long-random-token",
-  "timeoutMs": 2000,
-  "debugLogPath": "/ABS/PATH/.config/agent-notify/claude-code-debug.jsonl"
+  "token": "my-long-random-token"
 }
 ```
 
-这里的 `token` 只填 `.env` 里 `AGENT_NOTIFY_TOKENS` 冒号后面的部分。比如服务端是：
+可配置字段说明：
 
-```bash
-AGENT_NOTIFY_TOKENS=macbook:my-long-random-token
-```
-
-Claude Code adapter 配置里就填：
-
-```bash
-"token": "my-long-random-token"
-```
-
-不要把 `macbook:` 一起填进去。
-
-`debugLogPath` 是可选的。建议刚接入时先保留，方便确认 Claude Code hook 是否真的触发了。
+- `serverUrl`：必填。AgentNotify 服务地址。
+- `token`：必填。只填 `.env` 里 `AGENT_NOTIFY_TOKENS` 冒号后面的部分。
+- `timeoutMs`：可选。adapter 请求超时时间，单位是毫秒，默认 `2000`。
+- `debugLogPath`：可选。配置后，adapter 会把自己看到的每个事件写进这个 JSONL 文件，方便确认 Claude Code hook 是否真的触发了。默认不填。
 
 ### 3. 安装 Claude Code adapter 文件
-
-推荐把 adapter 复制到稳定的 AgentNotify 配置目录，再让 Claude Code hooks 指向这个复制后的文件。这样仓库切分支、更新 examples 或移动项目目录时，Claude Code 配置不会跟着失效。
 
 在 AgentNotify 项目目录里执行：
 
 ```bash
 mkdir -p ~/.config/agent-notify
-cp examples/claude-code/agent-notify.mjs ~/.config/agent-notify/agent-notify.mjs
-```
-
-然后确认复制后的文件存在：
-
-```bash
-ls ~/.config/agent-notify/agent-notify.mjs
+cp examples/claude-code/claude-code-agent-notify.mjs ~/.config/agent-notify/claude-code-agent-notify.mjs
 ```
 
 Claude Code settings 里建议使用展开后的绝对路径，而不是 `~`。你可以用下面的命令查看：
 
 ```bash
-printf '%s\n' "$HOME/.config/agent-notify/agent-notify.mjs"
+printf '%s\n' "$HOME/.config/agent-notify/claude-code-agent-notify.mjs"
 ```
 
-后面的 hook 配置里，把 `/ABS/PATH/.config/agent-notify/agent-notify.mjs` 换成这条命令输出的路径。
+后面的 hook 配置里，把 `/ABS/PATH/.config/agent-notify/claude-code-agent-notify.mjs` 换成这条命令输出的路径。
 
 ### 4. 配置 Claude Code hooks
 
@@ -350,7 +344,7 @@ printf '%s\n' "$HOME/.config/agent-notify/agent-notify.mjs"
         "hooks": [
           {
             "type": "command",
-            "command": "node /ABS/PATH/.config/agent-notify/agent-notify.mjs"
+            "command": "node /ABS/PATH/.config/agent-notify/claude-code-agent-notify.mjs"
           }
         ]
       }
@@ -360,7 +354,7 @@ printf '%s\n' "$HOME/.config/agent-notify/agent-notify.mjs"
         "hooks": [
           {
             "type": "command",
-            "command": "node /ABS/PATH/.config/agent-notify/agent-notify.mjs"
+            "command": "node /ABS/PATH/.config/agent-notify/claude-code-agent-notify.mjs"
           }
         ]
       }
@@ -370,7 +364,7 @@ printf '%s\n' "$HOME/.config/agent-notify/agent-notify.mjs"
         "hooks": [
           {
             "type": "command",
-            "command": "node /ABS/PATH/.config/agent-notify/agent-notify.mjs"
+            "command": "node /ABS/PATH/.config/agent-notify/claude-code-agent-notify.mjs"
           }
         ]
       }
@@ -380,7 +374,7 @@ printf '%s\n' "$HOME/.config/agent-notify/agent-notify.mjs"
         "hooks": [
           {
             "type": "command",
-            "command": "node /ABS/PATH/.config/agent-notify/agent-notify.mjs"
+            "command": "node /ABS/PATH/.config/agent-notify/claude-code-agent-notify.mjs"
           }
         ]
       }
@@ -391,8 +385,8 @@ printf '%s\n' "$HOME/.config/agent-notify/agent-notify.mjs"
 
 这四个 hooks 的作用是：
 
-- `UserPromptSubmit`：记录本轮开始时间，不发通知
-- `Notification`：权限批准或 MCP 交互通知；普通 `idle_prompt` 不通知
+- `UserPromptSubmit`：用于长任务完成通知时记录开始时间，不发通知。
+- `Notification`：权限批准或 MCP 交互通知；
 - `Stop`：达到 `AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS` 后通知任务完成
 - `StopFailure`：任务失败或限额错误时通知
 
@@ -400,7 +394,7 @@ printf '%s\n' "$HOME/.config/agent-notify/agent-notify.mjs"
 
 配置完成后，重启 Claude Code，让 settings 生效。
 
-### 5. 验证 Claude Code adapter
+### 5. 验证 Claude Code 通知
 
 先确认 AgentNotify 服务正在运行：
 
@@ -408,31 +402,9 @@ printf '%s\n' "$HOME/.config/agent-notify/agent-notify.mjs"
 pnpm dev
 ```
 
-然后可以用一条手动 hook payload 测试 adapter 是否能连到服务端。把命令里的 adapter 路径换成你的绝对路径：
+在 ClaudeCode 里触发一次需要权限/问题选择的操作。例如对ClaudeCode说：随便mock一个AskUserQuestion多选。插件捕捉到后，会向 AgentNotify 发送事件以及通知。
 
-```bash
-printf '{"hook_event_name":"Notification","notification_type":"permission_prompt","session_id":"manual_test","message":"AgentNotify manual test"}' | node /ABS/PATH/.config/agent-notify/agent-notify.mjs
-```
-
-如果配置正确，你应该会收到一条手机通知。也可以看 adapter debug log：
-
-```bash
-tail -f ~/.config/agent-notify/claude-code-debug.jsonl
-```
-
-正常转发时，每行里会有类似字段：
-
-```json
-{"forwarded":true,"sent":true,"hookEventName":"Notification","sessionId":"manual_test"}
-```
-
-如果 `forwarded` 是 `true` 但 `sent` 是 `false`，通常说明 AgentNotify 服务没启动、token 不匹配，或者服务端返回了 4xx / 5xx。
-
-### 6. 验证 Claude Code 实际 hook
-
-在 Claude Code 里触发一个需要你注意的操作，例如让它执行一个需要确认的命令。你应该收到权限通知。
-
-如果想验证长任务完成通知，可以临时把服务端阈值调低：
+如果想验证长任务完成通知，可以临时把【服务端】阈值调低：
 
 ```bash
 AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS=5
@@ -440,51 +412,60 @@ AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS=5
 
 重启 AgentNotify 服务后，让 Claude Code 跑一个超过 5 秒的任务。任务结束时应该收到完成通知。验证完再把阈值改回你日常想要的值，例如 `120`。
 
-Claude Code adapter 本身不保存状态。服务端收到 `UserPromptSubmit` 后在内存中记录本轮开始时间；
+和 OpenCode 不同的是。Claude Code 插件本身无法保存状态。长任务需要服务端收到 `UserPromptSubmit` 后在内存中记录本轮开始时间；
 收到 `Stop` 后判断是否达到 `AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS`，然后删除该状态；
 收到 `StopFailure` 后也会删除状态并发送失败通知。Claude Code 每轮结束后可能触发的 `Notification` / `idle_prompt` 会被 adapter 和服务端默认忽略，避免和长任务完成通知重复。异常残留由 24 小时 TTL 和 1000 条上限清理。
 
 ## Codex 接入
 
-Codex 使用 command hooks 调用本地 adapter。AgentNotify 第一版只处理两类手机通知：
+Codex 和 Claude 一样使用 command hooks 调用插件
 
-- `PermissionRequest`：Codex 需要用户批准权限时立即推送；`permission_mode` 为 `bypassPermissions` 时不推送。
-- `Stop`：一轮任务结束后，只有达到服务端阈值才推送完成通知。
+### 1. 确认 AgentNotify 服务端配置
 
-`UserPromptSubmit` 只用于服务端记录本轮开始时间，不会推送手机通知。
-
-### 1. 确认服务端配置
-
-`.env` 至少需要：
+先确认 `.env` 里有服务端 token 和 Bark endpoint/Ntfy endpoint：
 
 ```bash
 AGENT_NOTIFY_TOKENS=macbook:my-long-random-token
+AGENT_NOTIFY_PROVIDER=bark 或者 ntfy
 BARK_ENDPOINT=https://api.day.app/你的设备Key
+NTFY_ENDPOINT=https://ntfy.sh/agent_notify_long_random_text
 AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS=120
 ```
 
-如果 `AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS` 设为 `0` 或不配置，需要用户批准的 Codex 权限通知仍然会发送，但不会发送完成通知。
+长任务完成通知默认开启，阈值为 `120` 秒：任务运行超过 120 秒后，结束时才会推送完成通知。
+
+如果想关掉完成通知，把阈值设为 `0`。设为 `0` 后，Codex 的权限通知仍然会发送，只是不再发送完成通知。
+
+启动服务：
+
+```bash
+pnpm dev
+```
 
 ### 2. 创建 Codex adapter 配置
 
-创建配置目录：
+从示例复制一份再改（在 AgentNotify 项目目录里执行）：
 
 ```bash
 mkdir -p ~/.config/agent-notify
+cp examples/codex/codex.json ~/.config/agent-notify/codex.json
 ```
 
-创建 `~/.config/agent-notify/codex.json`：
+复制后的最小配置长这样：
 
 ```json
 {
   "serverUrl": "http://127.0.0.1:8787",
-  "token": "my-long-random-token",
-  "timeoutMs": 2000,
-  "debugLogPath": "/ABS/PATH/.config/agent-notify/codex-debug.jsonl"
+  "token": "my-long-random-token"
 }
 ```
 
-`token` 只填 `.env` 里 `AGENT_NOTIFY_TOKENS` 冒号后面的部分。
+可配置字段说明：
+
+- `serverUrl`：必填。AgentNotify 服务地址。
+- `token`：必填。只填 `.env` 里 `AGENT_NOTIFY_TOKENS` 冒号后面的部分。
+- `timeoutMs`：可选。adapter 请求超时时间，单位是毫秒，默认 `2000`。
+- `debugLogPath`：可选。配置后，adapter 会把自己看到的每个事件写进这个 JSONL 文件，方便排查事件是否进入 adapter。默认不填。
 
 ### 3. 安装 Codex adapter 文件
 
@@ -492,7 +473,7 @@ mkdir -p ~/.config/agent-notify
 
 ```bash
 mkdir -p ~/.config/agent-notify
-cp examples/codex/agent-notify.mjs ~/.config/agent-notify/codex-agent-notify.mjs
+cp examples/codex/codex-agent-notify.mjs ~/.config/agent-notify/codex-agent-notify.mjs
 ```
 
 查看绝对路径：
@@ -622,13 +603,12 @@ Docker 默认把服务暴露到宿主机的 `8787` 端口：
 http://127.0.0.1:8787
 ```
 
-OpenCode 侧仍然使用同一个插件配置文件：
+OpenCode 侧仍然使用同一个插件配置文件（最小配置）：
 
 ```json
 {
   "serverUrl": "http://127.0.0.1:8787",
-  "token": "my-long-random-token",
-  "timeoutMs": 2000
+  "token": "my-long-random-token"
 }
 ```
 
@@ -722,14 +702,14 @@ tail -f ~/.config/opencode/agent-notify-debug.jsonl
 1. AgentNotify 服务是否正在运行。
 2. `~/.config/agent-notify/claude-code.json` 是否存在。
 3. `token` 是否等于服务端 `.env` 里 token 的冒号后半段。
-4. Claude Code hooks 里的 command 是否是 `node /绝对路径/.config/agent-notify/agent-notify.mjs`。
-5. command 里的路径是否真实存在，可以用 `ls /绝对路径/.config/agent-notify/agent-notify.mjs` 检查。
+4. Claude Code hooks 里的 command 是否是 `node /绝对路径/.config/agent-notify/claude-code-agent-notify.mjs`。
+5. command 里的路径是否真实存在，可以用 `ls /绝对路径/.config/agent-notify/claude-code-agent-notify.mjs` 检查。
 6. Claude Code 是否已经重启并重新读取 settings。
 
 先用手动 payload 测试 adapter：
 
 ```bash
-printf '{"hook_event_name":"Notification","notification_type":"permission_prompt","session_id":"manual_debug","message":"AgentNotify debug"}' | node /ABS/PATH/.config/agent-notify/agent-notify.mjs
+printf '{"hook_event_name":"Notification","notification_type":"permission_prompt","session_id":"manual_debug","message":"AgentNotify debug"}' | node /ABS/PATH/.config/agent-notify/claude-code-agent-notify.mjs
 ```
 
 再看 adapter debug log：
@@ -758,8 +738,7 @@ OpenCode 插件配置应该是：
 ```json
 {
   "serverUrl": "http://127.0.0.1:8787",
-  "token": "my-long-random-token",
-  "timeoutMs": 2000
+  "token": "my-long-random-token"
 }
 ```
 

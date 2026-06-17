@@ -115,11 +115,11 @@ const envSchema = z
     AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS: z.coerce
       .number()
       .nonnegative()
-      .default(0),
+      .default(120),
     AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS: z.coerce
       .number()
       .nonnegative()
-      .default(0),
+      .default(120),
   })
   .superRefine((value, context) => {
     if (value.AGENT_NOTIFY_PROVIDER === "bark" && !value.BARK_ENDPOINT) {

@@ -1,6 +1,6 @@
-// Claude Code hook adapter: forwards notification-worthy events to agent-notify server.
-// Configure Claude Code command hooks to run this file with node.
-// Required config: ~/.config/agent-notify/claude-code.json.
+// Codex hook adapter: forwards notification-worthy events to agent-notify server.
+// Configure Codex command hooks to run this file with node.
+// Required config: ~/.config/agent-notify/codex.json.
 
 import { appendFileSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -9,9 +9,8 @@ import { fileURLToPath } from "node:url";
 
 const NOTIFY_EVENT_NAMES = new Set([
   "UserPromptSubmit",
-  "Notification",
+  "PermissionRequest",
   "Stop",
-  "StopFailure",
 ]);
 
 function isRecord(value) {
@@ -32,25 +31,33 @@ function getSessionId(raw) {
     : undefined;
 }
 
-function getNotificationType(raw) {
+function getToolName(raw) {
   if (!isRecord(raw)) return undefined;
-  return typeof raw.notification_type === "string" && raw.notification_type.trim()
-    ? raw.notification_type
+  return typeof raw.tool_name === "string" && raw.tool_name.trim()
+    ? raw.tool_name
     : undefined;
 }
 
-export function shouldForwardClaudeCodeEvent(raw) {
+function getPermissionMode(raw) {
+  if (!isRecord(raw)) return undefined;
+  return typeof raw.permission_mode === "string" && raw.permission_mode.trim()
+    ? raw.permission_mode
+    : undefined;
+}
+
+export function shouldForwardCodexEvent(raw) {
   const hookEventName = getHookEventName(raw);
-  if (hookEventName === "Notification" && getNotificationType(raw) === "idle_prompt") {
-    return false;
+  if (hookEventName === "PermissionRequest") {
+    return getPermissionMode(raw) !== "bypassPermissions";
   }
   return typeof hookEventName === "string" && NOTIFY_EVENT_NAMES.has(hookEventName);
 }
 
-export function summarizeClaudeCodeEventForDebug(raw) {
+export function summarizeCodexEventForDebug(raw) {
   return {
     hookEventName: getHookEventName(raw) ?? "unknown",
     sessionId: getSessionId(raw),
+    toolName: getToolName(raw),
     raw,
   };
 }
@@ -65,15 +72,15 @@ function writeDebugLog(config, raw, forwarded, sent) {
         ts: new Date().toISOString(),
         forwarded,
         sent,
-        ...summarizeClaudeCodeEventForDebug(raw),
+        ...summarizeCodexEventForDebug(raw),
       })}\n`,
     );
   } catch {
-    // Fail-safe: debug logging must never block Claude Code.
+    // Fail-safe: debug logging must never block Codex.
   }
 }
 
-export async function sendClaudeCodeEvent(
+export async function sendCodexEvent(
   serverUrl,
   token,
   timeoutMs,
@@ -89,7 +96,7 @@ export async function sendClaudeCodeEvent(
         "content-type": "application/json",
         authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ agent: "claude-code", raw }),
+      body: JSON.stringify({ agent: "codex", raw }),
       signal: controller.signal,
     });
     return response.ok;
@@ -108,10 +115,11 @@ function readRequiredString(raw, key) {
   return value;
 }
 
-function readRequiredNumber(raw, key) {
+function readOptionalNumber(raw, key) {
   const value = raw[key];
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    throw new Error(`agent-notify config requires ${key}`);
+  if (value === undefined) return undefined;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    throw new Error(`agent-notify config ${key} must be a non-negative number`);
   }
   return value;
 }
@@ -125,15 +133,21 @@ function readOptionalString(raw, key) {
   return value;
 }
 
-function readAgentNotifyConfig() {
-  const configPath = join(homedir(), ".config", "agent-notify", "claude-code.json");
-  const raw = JSON.parse(readFileSync(configPath, "utf8"));
+const DEFAULT_TIMEOUT_MS = 2000;
+
+export function parseCodexConfig(raw) {
   return {
     serverUrl: readRequiredString(raw, "serverUrl"),
     token: readRequiredString(raw, "token"),
-    timeoutMs: readRequiredNumber(raw, "timeoutMs"),
+    timeoutMs: readOptionalNumber(raw, "timeoutMs") ?? DEFAULT_TIMEOUT_MS,
     debugLogPath: readOptionalString(raw, "debugLogPath"),
   };
+}
+
+function readAgentNotifyConfig() {
+  const configPath = join(homedir(), ".config", "agent-notify", "codex.json");
+  const raw = JSON.parse(readFileSync(configPath, "utf8"));
+  return parseCodexConfig(raw);
 }
 
 async function readStdin() {
@@ -159,13 +173,13 @@ async function main() {
     return;
   }
 
-  const forwarded = shouldForwardClaudeCodeEvent(raw);
+  const forwarded = shouldForwardCodexEvent(raw);
   if (!forwarded) {
     writeDebugLog(config, raw, false, false);
     return;
   }
 
-  const sent = await sendClaudeCodeEvent(
+  const sent = await sendCodexEvent(
     config.serverUrl,
     config.token,
     config.timeoutMs,

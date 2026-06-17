@@ -51,10 +51,20 @@ describe("config parsing", () => {
     ).toThrow();
   });
 
-  it("defaults Claude Code completion threshold to disabled", () => {
+  it("defaults Claude Code completion threshold to 120", () => {
     const config = parseConfig({
       AGENT_NOTIFY_TOKENS: "macbook:abc",
       BARK_ENDPOINT: "https://api.day.app/key",
+    });
+
+    expect(config.claudeCompletionMinSeconds).toBe(120);
+  });
+
+  it("disables Claude Code completion threshold when set to 0", () => {
+    const config = parseConfig({
+      AGENT_NOTIFY_TOKENS: "macbook:abc",
+      BARK_ENDPOINT: "https://api.day.app/key",
+      AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS: "0",
     });
 
     expect(config.claudeCompletionMinSeconds).toBe(0);
@@ -80,10 +90,20 @@ describe("config parsing", () => {
     ).toThrow();
   });
 
-  it("defaults Codex completion threshold to disabled", () => {
+  it("defaults Codex completion threshold to 120", () => {
     const config = parseConfig({
       AGENT_NOTIFY_TOKENS: "macbook:abc",
       BARK_ENDPOINT: "https://api.day.app/key",
+    });
+
+    expect(config.codexCompletionMinSeconds).toBe(120);
+  });
+
+  it("disables Codex completion threshold when set to 0", () => {
+    const config = parseConfig({
+      AGENT_NOTIFY_TOKENS: "macbook:abc",
+      BARK_ENDPOINT: "https://api.day.app/key",
+      AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS: "0",
     });
 
     expect(config.codexCompletionMinSeconds).toBe(0);
