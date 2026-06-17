@@ -84,7 +84,7 @@ Confirm "app installed and endpoint ready?" before moving on. Do not ask what th
 
 ## Step 1 — Detect the runtime environment
 
-You need to know which OS the server and agents run on, to give correct paths and commands. Run:
+You need to know which OS the server and agents run on, to give correct paths and commands. Determine the runtime environment from the local shell you are operating in. On macOS, Linux, and Git Bash-style Windows shells, `uname -s` is usually enough:
 
 ```bash
 uname -s
@@ -107,7 +107,7 @@ Every "copy to where" / "where does the config file go" below is resolved via th
 
 ## Step 2 — Deploy the server (minimal defaults)
 
-Prerequisite: the user's machine has Node.js 20+ and pnpm. Before Step 0 already ensured that your working directory is the AgentNotify project root. If deps are not installed:
+Prerequisite: the user's machine has Node.js 20+ and pnpm. By this point, your working directory must already be the AgentNotify project root. Make sure project dependencies are installed; if they are missing, run:
 
 ```bash
 pnpm install
@@ -191,9 +191,11 @@ Under Docker, the agent-side `serverUrl` still points to `http://127.0.0.1:8787`
 
 Deploy only the agents the user selected in Step 0. Each agent follows the same three-part pattern: **where to copy from/to → what to change after copying → (adapter file)**.
 
-### 3.0 Verify each selected agent is installed
+### 3.0 Confirm each selected agent is ready
 
-Before copying any plugin/adapter files, check that the user actually has each selected agent installed — otherwise the hooks will never fire and notifications will silently never arrive. For every agent the user picked in Step 0, check its config directory exists:
+Before copying any plugin/adapter files, confirm that each agent selected in Step 0 is actually available on this machine. Do this only for the selected agents, and use the current OS from Step 1 to choose the right locations.
+
+The default config directories are:
 
 | Agent | Directory to check (macOS / Linux) | Directory to check (Windows) |
 | --- | --- | --- |
@@ -201,15 +203,7 @@ Before copying any plugin/adapter files, check that the user actually has each s
 | Claude Code | `~/.claude/` | `~/.claude\` |
 | Codex | `~/.codex/` | `~/.codex\` |
 
-Run the check (macOS / Linux example):
-
-```bash
-ls -d ~/.config/opencode ~/.claude ~/.codex 2>/dev/null
-```
-
-Each name printed means that directory exists. On Windows (Git Bash) replace `~/.config` with `$APPDATA` for OpenCode; `~/.claude` and `~/.codex` stay the same.
-
-If a selected agent's directory does **not** exist, that agent is most likely not installed. Stop and ask the user: do they want to (a) install that agent tool first and then come back, or (b) skip it for now and continue AgentNotify setup only for the agents whose directories are present? Do **not** copy plugin/hook files for an agent whose directory is missing.
+A missing config directory does not prove the agent can never be used, but it does mean the agent is not ready for hook installation in the normal path. If a selected agent does not appear to be installed or initialized, stop and ask the user whether they want to install/open that agent first, or skip it for now and continue AgentNotify setup only for the agents that are ready. Do **not** copy plugin/hook files for an agent whose config location is not available.
 
 ### Path base comparison (three platforms)
 
@@ -358,21 +352,21 @@ Merge the block below into the user-level `~/.codex/hooks.json`; if hooks alread
 
 ---
 
-## Step 5 — Verify
+## Step 5 — Verify selected integrations
 
-Make sure the server's `pnpm dev` is still running. Verify each agent in turn:
+Make sure the server's `pnpm dev` is still running. Verify only the agents selected in Step 0. For each selected agent, trigger one supported event that should produce a notification; the examples below are suggestions, not the only valid triggers.
 
 ### 5.1 OpenCode
 
-Start `opencode` and trigger an operation that needs permission or a question choice (e.g. ask OpenCode to mock a question option). A notification should arrive.
+Start `opencode` and trigger an operation that needs permission or a question choice. For example, ask OpenCode to mock a question option. A notification should arrive.
 
 ### 5.2 Claude Code
 
-After restarting Claude Code, trigger an operation that needs permission or a question choice (e.g. ask Claude Code to mock an AskUserQuestion multi-select). A notification should arrive.
+After restarting Claude Code, trigger an operation that needs permission or a question choice. For example, ask Claude Code to mock an AskUserQuestion multi-select. A notification should arrive.
 
 ### 5.3 Codex
 
-Open Codex (confirm the hook is trusted), lower Codex's permissions, and trigger a shell command that needs approval. A notification titled `Approve permission` / `需要批准` should arrive.
+Open Codex, confirm the hook is trusted if Codex asks, then trigger an operation that needs approval. For example, lower Codex's permissions and run a shell command that requires approval. A notification titled `Approve permission` / `需要批准` should arrive.
 
 ### 5.4 When no notification arrives
 
