@@ -2,9 +2,9 @@
 
 ## Project Context
 
-AgentNotify is a personal notification hub for AI coding agents. The current MVP receives hook events from OpenCode, Claude Code, and Codex, formats short server-side notifications, logs safe event summaries, and pushes them via Bark or ntfy.
+AgentNotify is a personal notification hub for AI coding agents. It receives hook events from OpenCode, Claude Code, and Codex, formats short server-side notifications, logs safe event summaries, and pushes them via Bark or ntfy.
 
-This is a sustainably updated project, not a finished platform. Prefer small, direct changes that fit the current MVP and leave future capabilities to future patches.
+This is a sustainably updated project, not a finished platform. Prefer small, direct changes that fit the current scope and leave future capabilities to future patches.
 
 ## Commands
 
