@@ -12,8 +12,13 @@ export function validateDoctorConfig(env: NodeJS.ProcessEnv): {
   messages: string[];
 } {
   const messages: string[] = [];
+  const provider = env.AGENT_NOTIFY_PROVIDER || "bark";
   if (!env.AGENT_NOTIFY_TOKENS) messages.push("Missing AGENT_NOTIFY_TOKENS");
-  if (!env.BARK_ENDPOINT) messages.push("Missing BARK_ENDPOINT");
+  if (provider === "ntfy") {
+    if (!env.NTFY_ENDPOINT) messages.push("Missing NTFY_ENDPOINT");
+  } else {
+    if (!env.BARK_ENDPOINT) messages.push("Missing BARK_ENDPOINT");
+  }
   return { ok: messages.length === 0, messages };
 }
 
@@ -60,7 +65,11 @@ async function doctor(): Promise<void> {
   }
 
   const config = parseConfig(process.env);
-  console.log(`OK provider=bark endpoint=${maskSecret(config.barkEndpoint)}`);
+  const endpoint =
+    config.provider === "ntfy" ? config.ntfyEndpoint : config.barkEndpoint;
+  console.log(
+    `OK provider=${config.provider} endpoint=${maskSecret(endpoint)}`,
+  );
   await mkdir(dirname(config.logPath), { recursive: true });
   await access(dirname(config.logPath));
   console.log(`OK log directory writable: ${dirname(config.logPath)}`);
