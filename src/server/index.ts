@@ -1,10 +1,15 @@
 import { serve } from "@hono/node-server";
 import { parseConfig } from "../config/env.js";
 import { BarkProvider } from "../providers/bark.js";
+import { NtfyProvider } from "../providers/ntfy.js";
+import type { NotificationProvider } from "../providers/types.js";
 import { createApp } from "./app.js";
 
 const config = parseConfig(process.env);
-const provider = new BarkProvider(config.barkEndpoint);
+const provider: NotificationProvider =
+  config.provider === "ntfy"
+    ? new NtfyProvider(config.ntfyEndpoint, config.ntfyToken)
+    : new BarkProvider(config.barkEndpoint);
 const app = createApp({
   tokens: config.tokens,
   provider,

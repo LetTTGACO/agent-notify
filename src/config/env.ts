@@ -38,18 +38,30 @@ export interface NamedToken {
   value: string;
 }
 
-export interface AppConfig {
+interface BaseAppConfig {
   host: string;
   port: number;
   tokens: NamedToken[];
-  provider: "bark";
   language: NotificationLanguage;
-  barkEndpoint: string;
   logPath: string;
   logRaw: boolean;
   claudeCompletionMinSeconds: number;
   codexCompletionMinSeconds: number;
 }
+
+export type AppConfig =
+  | (BaseAppConfig & {
+      provider: "bark";
+      barkEndpoint: string;
+      ntfyEndpoint?: undefined;
+      ntfyToken?: undefined;
+    })
+  | (BaseAppConfig & {
+      provider: "ntfy";
+      ntfyEndpoint: string;
+      ntfyToken?: string;
+      barkEndpoint?: undefined;
+    });
 
 export function parseTokenList(value: string): NamedToken[] {
   const entries = value
@@ -73,39 +85,56 @@ export function parseTokenList(value: string): NamedToken[] {
   });
 }
 
-const envSchema = z.object({
-  AGENT_NOTIFY_HOST: z.string().default("0.0.0.0"),
-  AGENT_NOTIFY_PORT: z.coerce.number().int().positive().default(8787),
-  AGENT_NOTIFY_TOKENS: z.string().min(1),
-  AGENT_NOTIFY_PROVIDER: z.literal("bark").default("bark"),
-  AGENT_NOTIFY_LANGUAGE: z
-    .enum(notificationLanguages)
-    .default(defaultNotificationLanguage),
-  BARK_ENDPOINT: z.string().url(),
-  AGENT_NOTIFY_LOG_PATH: z.string().default("./data/events.jsonl"),
-  AGENT_NOTIFY_LOG_RAW: z
-    .enum(["true", "false", "1", "0"])
-    .default("false"),
-  AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS: z.coerce
-    .number()
-    .nonnegative()
-    .default(0),
-  AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS: z.coerce
-    .number()
-    .nonnegative()
-    .default(0),
-});
+const envSchema = z
+  .object({
+    AGENT_NOTIFY_HOST: z.string().default("0.0.0.0"),
+    AGENT_NOTIFY_PORT: z.coerce.number().int().positive().default(8787),
+    AGENT_NOTIFY_TOKENS: z.string().min(1),
+    AGENT_NOTIFY_PROVIDER: z.enum(["bark", "ntfy"]).default("bark"),
+    AGENT_NOTIFY_LANGUAGE: z
+      .enum(notificationLanguages)
+      .default(defaultNotificationLanguage),
+    BARK_ENDPOINT: z.string().url().optional(),
+    NTFY_ENDPOINT: z.string().url().optional(),
+    NTFY_TOKEN: z.string().optional(),
+    AGENT_NOTIFY_LOG_PATH: z.string().default("./data/events.jsonl"),
+    AGENT_NOTIFY_LOG_RAW: z
+      .enum(["true", "false", "1", "0"])
+      .default("false"),
+    AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS: z.coerce
+      .number()
+      .nonnegative()
+      .default(0),
+    AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS: z.coerce
+      .number()
+      .nonnegative()
+      .default(0),
+  })
+  .superRefine((value, context) => {
+    if (value.AGENT_NOTIFY_PROVIDER === "bark" && !value.BARK_ENDPOINT) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["BARK_ENDPOINT"],
+        message: "BARK_ENDPOINT is required when AGENT_NOTIFY_PROVIDER=bark",
+      });
+    }
+    if (value.AGENT_NOTIFY_PROVIDER === "ntfy" && !value.NTFY_ENDPOINT) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["NTFY_ENDPOINT"],
+        message: "NTFY_ENDPOINT is required when AGENT_NOTIFY_PROVIDER=ntfy",
+      });
+    }
+  });
 
 export function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
   loadDotenv();
   const parsed = envSchema.parse(env);
-  return {
+  const baseConfig = {
     host: parsed.AGENT_NOTIFY_HOST,
     port: parsed.AGENT_NOTIFY_PORT,
     tokens: parseTokenList(parsed.AGENT_NOTIFY_TOKENS),
-    provider: parsed.AGENT_NOTIFY_PROVIDER,
     language: parsed.AGENT_NOTIFY_LANGUAGE,
-    barkEndpoint: parsed.BARK_ENDPOINT,
     logPath: parsed.AGENT_NOTIFY_LOG_PATH,
     logRaw:
       parsed.AGENT_NOTIFY_LOG_RAW === "true" ||
@@ -114,5 +143,20 @@ export function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
       parsed.AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS,
     codexCompletionMinSeconds:
       parsed.AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS,
+  };
+
+  if (parsed.AGENT_NOTIFY_PROVIDER === "ntfy") {
+    return {
+      ...baseConfig,
+      provider: "ntfy",
+      ntfyEndpoint: parsed.NTFY_ENDPOINT!,
+      ntfyToken: parsed.NTFY_TOKEN?.trim() || undefined,
+    };
+  }
+
+  return {
+    ...baseConfig,
+    provider: "bark",
+    barkEndpoint: parsed.BARK_ENDPOINT!,
   };
 }
