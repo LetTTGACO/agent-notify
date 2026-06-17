@@ -50,3 +50,7 @@ Send this to your agent to deploy AgentNotify from the manual:
 Follow this manual to set up and configure AgentNotify:
 https://raw.githubusercontent.com/LetTTGACO/agent-notify/refs/heads/main/docs/ai-operation-manual.md
 ```
+
+## License
+
+[MIT](LICENSE) © LetTTGACO

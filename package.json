@@ -2,6 +2,7 @@
   "name": "agent-notify",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "bin": {
     "agent-notify": "./dist/cli/index.js"
