@@ -9,7 +9,6 @@ AgentNotify is a personal notification hub for AI coding agents. It receives hoo
 - Keeps quick turns silent and only pings when a session has run long enough to matter.
 - Tames rapid notify-handle-continue loops with a session-scoped cooldown for permission/question alerts.
 - Pushes through Bark (iPhone / Apple Watch) or ntfy (cross-platform).
-- Logs safe event summaries to JSONL. Raw payload logging is off by default.
 
 ## Supported agents
 
