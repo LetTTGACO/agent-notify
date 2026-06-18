@@ -18,9 +18,9 @@ The order is fixed: **Before Step 0 if needed → Step 0 → 1 → 2 → 3 → 4
 
 ---
 
-## Before Step 0 — Make sure you have a usable local checkout
+## Before Step 0 — Require a local project checkout
 
-If you are reading this manual from a GitHub URL, a pasted document link, or any context where your current working directory is not already the AgentNotify project root, you must first establish a usable local checkout.
+This manual must be used from inside the AgentNotify project root. If your current working directory is not the AgentNotify project root, stop before Step 0 and ask the user to manually clone this repository, enter the project root, and then use this manual again from there.
 
 Repository URL:
 
@@ -28,11 +28,9 @@ Repository URL:
 https://github.com/LetTTGACO/agent-notify
 ```
 
-Use your own context and local inspection to decide whether the current working directory is already a usable AgentNotify checkout. Only continue to Step 0 after your working directory is the AgentNotify project root.
+Do not clone the repository for the user from this manual. Do not inspect or modify AgentNotify server config, Provider config, agent adapter config, or hook files while outside the project root.
 
-At this stage, only establish a usable project checkout.
-
-If the current working directory is not a usable checkout, ask the user whether they want to clone the repository into the current directory or provide another location. Do not choose a clone path for them.
+Only continue to Step 0 after your working directory is the AgentNotify project root.
 
 ---
 

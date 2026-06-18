@@ -52,11 +52,18 @@ Human manual:
 - [人类使用手册（中文）](docs/human-manual-cn.md)
 - [Human Manual (English)](docs/human-manual-en.md)
 
-End-to-end deployment manual for AI coding agents. Send the document link below to your agent, and it can follow the manual step by step:
+End-to-end deployment manual for AI coding agents:
 
 - [AgentNotify AI Operation Manual](docs/ai-operation-manual.md)
 
-Send this to your AI agent to config AgentNotify:
+AI-assisted setup is recommended to start from a local project directory. First manually clone this repository and enter the project root:
+
+```bash
+git clone git@github.com:LetTTGACO/agent-notify.git
+cd agent-notify
+```
+
+Then start your AI agent in that directory and send it this:
 
 ```
 Follow this manual to set up and configure AgentNotify:
