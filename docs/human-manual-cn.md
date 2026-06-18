@@ -120,6 +120,7 @@ AGENT_NOTIFY_PROVIDER=bark
 AGENT_NOTIFY_LANGUAGE=en
 AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS=120
 AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS=120
+AGENT_NOTIFY_OPENCODE_COMPLETION_MIN_SECONDS=120
 AGENT_NOTIFY_COOLDOWN_SECONDS=60
 BARK_ENDPOINT=https://api.day.app/example-device-key
 NTFY_ENDPOINT=
@@ -137,6 +138,7 @@ AGENT_NOTIFY_LOG_RAW=false
 - `AGENT_NOTIFY_LANGUAGE`：通知文案语言，支持 `en` 和 `zh`，默认 `en`。
 - `AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS`：Claude Code 完成通知阈值，单位秒，默认 `120`。任务运行超过该秒数后，结束时推送完成通知；设为 `0` 关闭 Claude Code 完成通知。
 - `AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS`：Codex 完成通知阈值，单位秒，默认 `120`。任务运行超过该秒数后，结束时推送完成通知；设为 `0` 关闭 Codex 完成通知。
+- `AGENT_NOTIFY_OPENCODE_COMPLETION_MIN_SECONDS`：OpenCode 完成通知阈值，单位秒，默认 `120`。任务运行超过该秒数后，结束时推送完成通知；设为 `0` 关闭 OpenCode 完成通知。
 - `AGENT_NOTIFY_COOLDOWN_SECONDS`：交互冷却窗口，单位秒，默认 `60`。连续权限/问答通知的冷却降噪窗口，设为 `0` 关闭。详见上文「交互冷却降噪」。
 
 建议把 `dev-token-change-me` 改成只有你知道的字符串。例如：
@@ -267,7 +269,6 @@ cp examples/opencode/agent-notify.json ~/.config/opencode/agent-notify.json
 
 - `serverUrl`：必填。AgentNotify 服务端地址。
 - `token`：必填。必须和 `.env` 里 `AGENT_NOTIFY_TOKENS` 的 token 部分一致，也就是冒号后面的部分。
-- `completionMinSeconds`：可选，默认 `120`（即默认开启）。会话耗时达到该秒数后，任务完成才发送一次完成通知；设为 `0` 关闭完成通知。
 - `timeoutMs`：可选。插件请求超时时间，单位毫秒，默认 `2000`。
 - `debugLogPath`：可选。配置后，OpenCode 插件会把自己看到的每个事件写进这个 JSONL 文件，包含原始 OpenCode 事件，方便排查事件是否进入插件。默认不填。
 
@@ -289,17 +290,13 @@ opencode
 
 在 OpenCode 里触发一次需要权限的操作。例如对OpenCode说：随便mock一个question选项。插件捕捉到后，会向 AgentNotify 发送事件以及通知。
 
-如果想验证长任务完成通知，可以在 `~/.config/opencode/agent-notify.json` 里临时加一行 `completionMinSeconds` 把阈值调低：
+如果想验证长任务完成通知，可以在服务端 `.env` 里临时把 `AGENT_NOTIFY_OPENCODE_COMPLETION_MIN_SECONDS` 调低：
 
-```json
-{
-  "serverUrl": "http://127.0.0.1:8787",
-  "token": "my-long-random-token",
-  "completionMinSeconds": 5
-}
+```
+AGENT_NOTIFY_OPENCODE_COMPLETION_MIN_SECONDS=5
 ```
 
-重启 OpenCode 后，让 OpenCode 跑一个超过 5 秒的任务。任务结束时应该收到完成通知。验证完删掉这行（或改回 `120`）即可恢复默认阈值。
+重启服务端后，让 OpenCode 跑一个超过 5 秒的任务。任务结束时应该收到完成通知。验证完改回 `120` 即可恢复默认阈值。
 
 ## Claude Code 接入
 
@@ -644,6 +641,7 @@ docker compose -f deploy/docker/docker-compose.yml up --build
 | `AGENT_NOTIFY_LANGUAGE` | 否 | `en` | 通知文案语言，`en` 或 `zh` |
 | `AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS` | 否 | `120` | Claude Code 完成通知阈值，`0` 关闭 |
 | `AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS` | 否 | `120` | Codex 完成通知阈值，`0` 关闭 |
+| `AGENT_NOTIFY_OPENCODE_COMPLETION_MIN_SECONDS` | 否 | `120` | OpenCode 完成通知阈值，`0` 关闭 |
 | `AGENT_NOTIFY_LOG_RAW` | 否 | `false` | 是否记录原始 raw payload，排查时临时开启 |
 
 下面几项在 `docker-compose.yml` 里固定，一般不需要改：
@@ -776,7 +774,7 @@ AGENT_NOTIFY_TOKENS=macbook:my-long-random-token
 
 完成通知默认开启，阈值 120 秒。没收到时按 agent 区分检查：
 
-- **OpenCode**：完成阈值在插件配置 `completionMinSeconds`（默认 `120`）。会话从 `busy` 到 `idle` 的耗时必须达到阈值才会推。短任务不推是正常的。验证时可临时把 `~/.config/opencode/agent-notify.json` 的 `completionMinSeconds` 设为 `5`，跑一个超过 5 秒的任务。同一轮如果先报错（`session.error`），后续 `idle` 不会再推完成通知。
+- **OpenCode**：完成阈值在服务端 `AGENT_NOTIFY_OPENCODE_COMPLETION_MIN_SECONDS`（默认 `120`）。会话从 `busy` 到 `idle` 的耗时必须达到阈值才会推。短任务不推是正常的。验证时可临时把服务端 `.env` 的 `AGENT_NOTIFY_OPENCODE_COMPLETION_MIN_SECONDS` 设为 `5`，跑一个超过 5 秒的任务。同一轮如果先报错（`session.error`），后续 `idle` 不会再推完成通知。
 - **Claude Code**：阈值在服务端 `AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS`（默认 `120`）。必须 `UserPromptSubmit` 先记录本轮开始时间，`Stop` 时才判断；如果 `UserPromptSubmit` hook 没配或没触发，`Stop` 就没有起始时间，不会推完成通知。确认四个 hook 都配了。`StopFailure` 会清掉本轮状态并发失败通知，不再发完成通知。
 - **Codex**：阈值在服务端 `AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS`（默认 `120`）。同样依赖 `UserPromptSubmit` 记录开始时间，确认三个 hook 都配了且 Codex `/hooks` 已 trust。
 
@@ -790,7 +788,7 @@ AGENT_NOTIFY_TOKENS=macbook:my-long-random-token
 2. `token` 是否等于服务端 `.env` 里 token 的冒号后半段。
 3. 插件文件是否复制到了正确目录。
 4. AgentNotify 服务是否正在运行。
-5. 你触发的是否是当前支持的事件：权限请求、问题选择、会话错误，或达到 `completionMinSeconds` 阈值后的会话完成。
+5. 你触发的是否是当前支持的事件：权限请求、问题选择、会话错误，或达到 `AGENT_NOTIFY_OPENCODE_COMPLETION_MIN_SECONDS` 阈值后的会话完成。
 
 如果你在 `agent-notify.json` 里配了 `debugLogPath`，先看插件端是否看到了事件（路径换成你配的那个）：
 
