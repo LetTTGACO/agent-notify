@@ -20,6 +20,10 @@ import {
   CooldownPolicy,
   type CooldownPolicyDecision,
 } from "./cooldown-policy.js";
+import {
+  OpenCodeSessionPolicy,
+  type OpenCodeSessionPolicyDecision,
+} from "./opencode-session-policy.js";
 
 export interface CreateAppOptions {
   tokens: NamedToken[];
@@ -31,6 +35,8 @@ export interface CreateAppOptions {
   claudeCodeSessionPolicy?: ClaudeCodeSessionPolicy;
   codexCompletionMinSeconds: number;
   codexSessionPolicy?: CodexSessionPolicy;
+  opencodeCompletionMinSeconds: number;
+  opencodeSessionPolicy?: OpenCodeSessionPolicy;
   cooldownSeconds: number;
   cooldownPolicy?: CooldownPolicy;
 }
@@ -62,6 +68,11 @@ export function createApp(options: CreateAppOptions): Hono {
     options.codexSessionPolicy ??
     new CodexSessionPolicy({
       completionMinSeconds: options.codexCompletionMinSeconds,
+    });
+  const opencodeSessionPolicy =
+    options.opencodeSessionPolicy ??
+    new OpenCodeSessionPolicy({
+      completionMinSeconds: options.opencodeCompletionMinSeconds,
     });
   const cooldownPolicy =
     options.cooldownPolicy ??
@@ -109,6 +120,32 @@ export function createApp(options: CreateAppOptions): Hono {
     tokenName: string,
     incomingAgent: "codex",
     decision: Exclude<CodexSessionPolicyDecision, { action: "continue" }>,
+  ): Promise<void> {
+    trace("suppressed", {
+      receivedAt,
+      tokenName,
+      agent: incomingAgent,
+      sourceEvent: decision.sourceEvent,
+      sessionId: decision.sessionId,
+      reason: decision.reason,
+    });
+    await safeLog({
+      receivedAt,
+      status: "suppressed",
+      tokenName,
+      agent: incomingAgent,
+      kind: "state",
+      sessionId: decision.sessionId,
+      sourceEvent: decision.sourceEvent,
+      reason: decision.reason,
+    });
+  }
+
+  async function logSuppressedOpenCodeEvent(
+    receivedAt: string,
+    tokenName: string,
+    incomingAgent: "opencode",
+    decision: Exclude<OpenCodeSessionPolicyDecision, { action: "continue" }>,
   ): Promise<void> {
     trace("suppressed", {
       receivedAt,
@@ -230,6 +267,21 @@ export function createApp(options: CreateAppOptions): Hono {
         auth.tokenName!,
         "codex",
         codexPolicyDecision,
+      );
+      return c.json({ ok: true, notified: false });
+    }
+
+    const opencodePolicyDecision = opencodeSessionPolicy.apply(
+      incoming,
+      auth.tokenName!,
+    );
+
+    if (opencodePolicyDecision.action === "suppress") {
+      await logSuppressedOpenCodeEvent(
+        receivedAt,
+        auth.tokenName!,
+        "opencode",
+        opencodePolicyDecision,
       );
       return c.json({ ok: true, notified: false });
     }

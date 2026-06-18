@@ -8,7 +8,7 @@ You are the operator; the user is the person being served. Your job: **guide the
 
 Three hard conventions run through the entire manual. Never violate them:
 
-1. **Minimal defaults.** Unless the user explicitly asks for a specific option, fill only required fields. Optional fields (`timeoutMs`, `debugLogPath`, `completionMinSeconds`, `AGENT_NOTIFY_LOG_RAW`, etc.) are never added or changed — leave them at the example/code defaults. The one exception is `AGENT_NOTIFY_LANGUAGE`: it defaults to `en` (English), and you set it based on the language the user is talking to you in — see Step 2.2.
+1. **Minimal defaults.** Unless the user explicitly asks for a specific option, fill only required fields. Optional fields (`timeoutMs`, `debugLogPath`, `AGENT_NOTIFY_LOG_RAW`, etc.) are never added or changed — leave them at the example/code defaults. The one exception is `AGENT_NOTIFY_LANGUAGE`: it defaults to `en` (English), and you set it based on the language the user is talking to you in — see Step 2.2.
 
 2. **Sensitive values stay in files, never in the conversation.** `AGENT_NOTIFY_TOKENS`, `BARK_ENDPOINT`, `NTFY_ENDPOINT`, `NTFY_TOKEN`, and each agent config's `token` — you **never ask for, collect, echo, or fill in the actual values** of these. Your job stops at telling the user "open this file, change these lines, use this format", giving a placeholder template, and asking the user to **edit the real file themselves with their editor**. You may only confirm progress with yes/no questions ("done yet?", "did doctor pass?") — never "what did you put?".
 
@@ -237,7 +237,7 @@ cp examples/opencode/agent-notify.json ~/.config/opencode/agent-notify.json
 }
 ```
 
-Stress to the user: `token` must equal the part **after the colon** of `AGENT_NOTIFY_TOKENS` in the server `.env` — do not include `macbook:`. Keep `serverUrl` at default. Do not add other optional fields (`completionMinSeconds`, `timeoutMs`, `debugLogPath`).
+Stress to the user: `token` must equal the part **after the colon** of `AGENT_NOTIFY_TOKENS` in the server `.env` — do not include `macbook:`. Keep `serverUrl` at default. Do not add other optional fields (`timeoutMs`, `debugLogPath`).
 
 OpenCode has no adapter file and needs no hooks — the plugin is active once installed. → Go straight to Step 5.
 

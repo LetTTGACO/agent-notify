@@ -47,6 +47,7 @@ interface BaseAppConfig {
   logRaw: boolean;
   claudeCompletionMinSeconds: number;
   codexCompletionMinSeconds: number;
+  opencodeCompletionMinSeconds: number;
   cooldownSeconds: number;
 }
 
@@ -121,6 +122,10 @@ const envSchema = z
       .number()
       .nonnegative()
       .default(120),
+    AGENT_NOTIFY_OPENCODE_COMPLETION_MIN_SECONDS: z.coerce
+      .number()
+      .nonnegative()
+      .default(120),
     AGENT_NOTIFY_COOLDOWN_SECONDS: z.coerce
       .number()
       .nonnegative()
@@ -159,6 +164,8 @@ export function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
       parsed.AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS,
     codexCompletionMinSeconds:
       parsed.AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS,
+    opencodeCompletionMinSeconds:
+      parsed.AGENT_NOTIFY_OPENCODE_COMPLETION_MIN_SECONDS,
     cooldownSeconds: parsed.AGENT_NOTIFY_COOLDOWN_SECONDS,
   };
 

@@ -120,6 +120,7 @@ AGENT_NOTIFY_PROVIDER=bark
 AGENT_NOTIFY_LANGUAGE=en
 AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS=120
 AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS=120
+AGENT_NOTIFY_OPENCODE_COMPLETION_MIN_SECONDS=120
 AGENT_NOTIFY_COOLDOWN_SECONDS=60
 BARK_ENDPOINT=https://api.day.app/example-device-key
 NTFY_ENDPOINT=
@@ -137,6 +138,7 @@ What you need to change:
 - `AGENT_NOTIFY_LANGUAGE`: notification text language, `en` or `zh`, default `en`.
 - `AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS`: Claude Code completion threshold in seconds, default `120`. After a task runs longer than this, a completion notification is pushed when it ends; set `0` to disable Claude Code completion notifications.
 - `AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS`: Codex completion threshold in seconds, default `120`. Same behavior as above; set `0` to disable Codex completion notifications.
+- `AGENT_NOTIFY_OPENCODE_COMPLETION_MIN_SECONDS`: OpenCode completion threshold in seconds, default `120`. Same behavior as above; set `0` to disable OpenCode completion notifications.
 - `AGENT_NOTIFY_COOLDOWN_SECONDS`: interaction cooldown window in seconds, default `60`. The noise-reduction window for back-to-back permission/question notifications; set `0` to disable. See "Interaction cooldown (noise reduction)" above.
 
 Consider changing `dev-token-change-me` to a string only you know, e.g.:
@@ -267,7 +269,6 @@ The minimal config after copying:
 
 - `serverUrl`: required. The AgentNotify server URL.
 - `token`: required. Must match the token part of `AGENT_NOTIFY_TOKENS` in `.env` — the part after the colon.
-- `completionMinSeconds`: optional, default `120` (enabled by default). After a session runs longer than this, a single completion notification is sent when the task finishes; set `0` to disable completion notifications.
 - `timeoutMs`: optional. Plugin request timeout in milliseconds, default `2000`.
 - `debugLogPath`: optional. When set, the plugin writes every event it sees to this JSONL file, including the raw OpenCode event, to help confirm whether events reach the plugin. Off by default.
 
@@ -289,17 +290,13 @@ opencode
 
 Trigger an action that needs permission in OpenCode. For example, tell OpenCode to mock a question with options. Once the plugin catches it, it sends the event and a notification to AgentNotify.
 
-To verify long-task completion notifications, temporarily lower the threshold by adding `completionMinSeconds` in `~/.config/opencode/agent-notify.json`:
+To verify long-task completion notifications, temporarily lower the threshold in the server `.env` by setting `AGENT_NOTIFY_OPENCODE_COMPLETION_MIN_SECONDS`:
 
-```json
-{
-  "serverUrl": "http://127.0.0.1:8787",
-  "token": "my-long-random-token",
-  "completionMinSeconds": 5
-}
+```
+AGENT_NOTIFY_OPENCODE_COMPLETION_MIN_SECONDS=5
 ```
 
-Restart OpenCode and have it run a task longer than 5 seconds. You should get a completion notification when the task ends. Remove the line (or set it back to `120`) afterwards to restore the default threshold.
+Restart the server and have OpenCode run a task longer than 5 seconds. You should get a completion notification when the task ends. Set it back to `120` afterwards to restore the default threshold.
 
 ## Claude Code setup
 
@@ -642,6 +639,7 @@ docker compose -f deploy/docker/docker-compose.yml up --build
 | `AGENT_NOTIFY_LANGUAGE` | no | `en` | notification text language, `en` or `zh` |
 | `AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS` | no | `120` | Claude Code completion threshold, `0` disables |
 | `AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS` | no | `120` | Codex completion threshold, `0` disables |
+| `AGENT_NOTIFY_OPENCODE_COMPLETION_MIN_SECONDS` | no | `120` | OpenCode completion threshold, `0` disables |
 | `AGENT_NOTIFY_LOG_RAW` | no | `false` | whether to log raw payloads; turn on temporarily for debugging |
 
 These are fixed in `docker-compose.yml` and usually don't need changing:
@@ -774,7 +772,7 @@ The format is `name:token`; the colon is required.
 
 Completion notifications are on by default, threshold 120 seconds. When missing, check per agent:
 
-- **OpenCode**: the threshold is the plugin config `completionMinSeconds` (default `120`). The time from session `busy` to `idle` must reach the threshold to push. Short tasks not pushing is expected. To verify, temporarily set `completionMinSeconds` to `5` in `~/.config/opencode/agent-notify.json` and run a task longer than 5 seconds. If a turn already errored (`session.error`), a later `idle` won't push a completion notification.
+- **OpenCode**: the threshold is the server `AGENT_NOTIFY_OPENCODE_COMPLETION_MIN_SECONDS` (default `120`). The time from session `busy` to `idle` must reach the threshold to push. Short tasks not pushing is expected. To verify, temporarily set `AGENT_NOTIFY_OPENCODE_COMPLETION_MIN_SECONDS` to `5` in the server `.env` and run a task longer than 5 seconds. If a turn already errored (`session.error`), a later `idle` won't push a completion notification.
 - **Claude Code**: the threshold is the server `AGENT_NOTIFY_CLAUDE_COMPLETION_MIN_SECONDS` (default `120`). `UserPromptSubmit` must record the start time first for `Stop` to judge; if the `UserPromptSubmit` hook isn't configured or didn't fire, `Stop` has no start time and won't push a completion notification. Confirm all four hooks are configured. `StopFailure` clears the turn's state and sends a failure notification instead of a completion notification.
 - **Codex**: the threshold is the server `AGENT_NOTIFY_CODEX_COMPLETION_MIN_SECONDS` (default `120`). It also relies on `UserPromptSubmit` recording the start time; confirm all three hooks are configured and Codex `/hooks` is trusted.
 
@@ -788,7 +786,7 @@ Check in order:
 2. Whether `token` equals the part after the colon in the server `.env` token.
 3. Whether the plugin file was copied to the right directory.
 4. Whether the AgentNotify service is running.
-5. Whether the event you triggered is currently supported: a permission request, a question choice, a session error, or a session completion after the `completionMinSeconds` threshold.
+5. Whether the event you triggered is currently supported: a permission request, a question choice, a session error, or a session completion after the `AGENT_NOTIFY_OPENCODE_COMPLETION_MIN_SECONDS` threshold.
 
 If you set `debugLogPath` in `agent-notify.json`, first check whether the plugin saw the event (use the path you configured):
 

@@ -4,6 +4,7 @@ import { createApp } from "../../src/server/app.js";
 import { ClaudeCodeSessionPolicy } from "../../src/server/claude-code-session-policy.js";
 import { CodexSessionPolicy } from "../../src/server/codex-session-policy.js";
 import { CooldownPolicy } from "../../src/server/cooldown-policy.js";
+import { OpenCodeSessionPolicy } from "../../src/server/opencode-session-policy.js";
 import type { NotificationProvider } from "../../src/providers/types.js";
 
 function provider(): NotificationProvider {
@@ -22,6 +23,7 @@ function appOptions(mockProvider = provider()) {
     language: "en" as const,
     claudeCompletionMinSeconds: 0,
     codexCompletionMinSeconds: 0,
+    opencodeCompletionMinSeconds: 0,
     cooldownSeconds: 0,
   };
 }
@@ -707,6 +709,144 @@ describe("server app", () => {
       sessionId,
       reason: "state_recorded",
     });
+  });
+
+  it("logs a JSONL suppressed entry for OpenCode busy session.status", async () => {
+    const logPath = `./data/test-opencode-suppressed-${Date.now()}.jsonl`;
+    trackedLogPaths.push(logPath);
+
+    const mockProvider = provider();
+    const app = createApp({
+      ...appOptions(mockProvider),
+      logPath,
+      opencodeCompletionMinSeconds: 120,
+      opencodeSessionPolicy: new OpenCodeSessionPolicy({
+        completionMinSeconds: 120,
+        nowMs: () => 1_000,
+      }),
+    });
+
+    const sessionId = `opencode_session_${Date.now()}`;
+    const res = await app.request("/events", {
+      method: "POST",
+      body: JSON.stringify({
+        agent: "opencode",
+        raw: {
+          type: "session.status",
+          properties: { sessionID: sessionId, status: { type: "busy" } },
+        },
+      }),
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer secret",
+      },
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, notified: false });
+    expect(mockProvider.send).not.toHaveBeenCalled();
+
+    const contents = await readFile(logPath, "utf8");
+    const lines = contents
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+    const suppressedLine = lines
+      .map((line) => JSON.parse(line) as Record<string, unknown>)
+      .find(
+        (entry) =>
+          entry.status === "suppressed" &&
+          entry.kind === "state" &&
+          entry.agent === "opencode" &&
+          entry.sourceEvent === "session.status",
+      );
+
+    expect(suppressedLine).toMatchObject({
+      status: "suppressed",
+      kind: "state",
+      agent: "opencode",
+      sourceEvent: "session.status",
+      sessionId,
+      reason: "state_recorded",
+    });
+  });
+
+  it("suppresses OpenCode completion below threshold and notifies after threshold", async () => {
+    let nowMs = 1_000;
+    const mockProvider = provider();
+    const app = createApp({
+      ...appOptions(mockProvider),
+      opencodeCompletionMinSeconds: 120,
+      opencodeSessionPolicy: new OpenCodeSessionPolicy({
+        completionMinSeconds: 120,
+        nowMs: () => nowMs,
+      }),
+    });
+
+    const sessionId = `opencode_thresh_${Date.now()}`;
+    const authHeaders = {
+      "content-type": "application/json",
+      authorization: "Bearer secret",
+    };
+
+    // busy: recorded, suppressed
+    let res = await app.request("/events", {
+      method: "POST",
+      body: JSON.stringify({
+        agent: "opencode",
+        raw: {
+          type: "session.status",
+          properties: { sessionID: sessionId, status: { type: "busy" } },
+        },
+      }),
+      headers: authHeaders,
+    });
+    expect(await res.json()).toEqual({ ok: true, notified: false });
+
+    // idle below threshold: suppressed, no notification
+    nowMs += 10_000;
+    res = await app.request("/events", {
+      method: "POST",
+      body: JSON.stringify({
+        agent: "opencode",
+        raw: { type: "session.idle", properties: { sessionID: sessionId } },
+      }),
+      headers: authHeaders,
+    });
+    expect(await res.json()).toEqual({ ok: true, notified: false });
+    expect(mockProvider.send).not.toHaveBeenCalled();
+
+    // idle above threshold: fresh busy→idle cycle notifies completed.
+    // The previous idle deleted the session, so re-record startedAtMs first.
+    nowMs += 1;
+    res = await app.request("/events", {
+      method: "POST",
+      body: JSON.stringify({
+        agent: "opencode",
+        raw: {
+          type: "session.status",
+          properties: { sessionID: sessionId, status: { type: "busy" } },
+        },
+      }),
+      headers: authHeaders,
+    });
+    expect(await res.json()).toEqual({ ok: true, notified: false });
+
+    nowMs += 130_000;
+    res = await app.request("/events", {
+      method: "POST",
+      body: JSON.stringify({
+        agent: "opencode",
+        raw: { type: "session.idle", properties: { sessionID: sessionId } },
+      }),
+      headers: authHeaders,
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, eventId: expect.any(String) });
+    expect(mockProvider.send).toHaveBeenCalled();
+    expect(mockProvider.send).toHaveBeenCalledWith(
+      expect.objectContaining({ group: "OpenCode" }),
+    );
   });
 
   it("logs a JSONL suppressed entry for Claude Code UserPromptSubmit", async () => {
