@@ -22,6 +22,12 @@ The order is fixed: **Before Step 0 if needed → Step 0 → 1 → 2 → 3 → 4
 
 If you are reading this manual from a GitHub URL, a pasted document link, or any context where your current working directory is not already the AgentNotify project root, you must first establish a usable local checkout.
 
+Repository URL:
+
+```text
+https://github.com/LetTTGACO/agent-notify
+```
+
 Do not assume the repository is already cloned. Also do not assume it is missing just because your current directory is wrong.
 
 First determine which case applies:
@@ -32,7 +38,7 @@ First determine which case applies:
 
 Only continue to Step 0 after your working directory is the AgentNotify project root.
 
-If the repository already exists locally, change into that directory. If it does not exist yet, ask the user where they want it cloned, recommend a simple default such as `~/agent-notify`, then clone the GitHub repository and enter it.
+If the repository already exists locally, change into that directory. If it does not exist yet, ask the user where they want it cloned. Do not choose the local clone path for them. After the user provides a path, clone the GitHub repository there and enter it.
 
 ---
 
