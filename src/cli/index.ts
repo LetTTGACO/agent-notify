@@ -37,6 +37,7 @@ async function postTestEvent(): Promise<void> {
       raw: {
         id: "cli-test-event",
         type: "permission.v2.asked",
+        cwd: process.cwd(),
         properties: {
           id: "cli-test-permission",
           sessionID: "cli-test-session",
