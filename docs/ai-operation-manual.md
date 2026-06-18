@@ -14,7 +14,7 @@ Three hard conventions run through the entire manual. Never violate them:
 
 3. **Ask before acting.** Provider choice, which agents to integrate, whether to use Docker — these decisions must be put to the user before you act. You may recommend, but not decide for them.
 
-The order is fixed: **Before Step 0 if needed → Step 0 → 1 → 2 → 3 → 4 → 5**. Only deploy the parts for the agents the user selected in Step 0.
+The order is fixed: **Before Step 0 if needed → Step 0 → 1 → 2 → 3 → 4 → 5**. Treat this order as a strict boundary: do not inspect or modify config files for later steps before reaching those steps. Only deploy the parts for the agents the user selected in Step 0.
 
 ---
 
@@ -29,6 +29,8 @@ https://github.com/LetTTGACO/agent-notify
 ```
 
 Use your own context and local inspection to decide whether the current working directory is already a usable AgentNotify checkout. Only continue to Step 0 after your working directory is the AgentNotify project root.
+
+At this stage, only establish a usable project checkout.
 
 If the current working directory is not a usable checkout, ask the user whether they want to clone the repository into the current directory or provide another location. Do not choose a clone path for them.
 
