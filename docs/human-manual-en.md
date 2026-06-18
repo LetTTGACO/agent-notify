@@ -44,6 +44,10 @@ When you handle several permissions or questions in a row at the computer, back-
 
 The cooldown is scoped per `token + agent + session`, so parallel sessions and different agents don't interfere. `completed` / `failed` notifications are not cooled (they are throttled by their own completion thresholds). When a session id is missing, the event passes through to avoid swallowing the first notice. The window is tunable via `AGENT_NOTIFY_COOLDOWN_SECONDS`; set it to `0` to disable.
 
+## Notification title project-name prefix
+
+Notification titles are automatically prefixed with the project name when AgentNotify can identify a working directory, for example `[agent-notify] Approve permission`. Claude Code and Codex use the `cwd` field from the hook payload. The OpenCode plugin adds the current project directory as `raw.cwd` before forwarding the event so the server can generate the same prefix. If no usable directory is available, the title stays unchanged.
+
 ## Notification providers: Bark and ntfy
 
 After formatting an event, AgentNotify pushes it through a provider to your device. Two providers are supported, selected via `AGENT_NOTIFY_PROVIDER` in `.env`; the default is `bark`.

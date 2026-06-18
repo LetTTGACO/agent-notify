@@ -20,6 +20,7 @@ AgentNotify receives hook events from OpenCode, Claude Code, and Codex, formats 
 
 - Receives raw hook events from OpenCode, Claude Code, and Codex.
 - Formats short, action-focused notifications server-side (permission requests, prompts, errors, long-task completion).
+- Prefixes notification titles with the project name when the agent provides a working directory.
 - Keeps short tasks quiet and only pings when a session has run long enough to matter.
 - Tames rapid notify-handle-continue loops with a session-scoped cooldown for permission/question alerts.
 - Pushes through Bark (iPhone / Apple Watch) or ntfy (cross-platform).

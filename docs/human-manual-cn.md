@@ -44,6 +44,10 @@ Codex 侧支持这些 hooks：
 
 冷却按「token + agent + session」维度隔离，不同会话、不同 agent 互不影响；`completed` / `failed` 等完成态通知不进冷却（由各自的完成阈值节流）。缺 session 时放行，避免漏响首条。窗口可通过 `AGENT_NOTIFY_COOLDOWN_SECONDS` 调整，设为 `0` 关闭。
 
+## 通知标题的项目名前缀
+
+通知标题会在能够识别项目目录时自动加项目名前缀，例如 `[agent-notify] 需要批准`。Claude Code 和 Codex 使用 hook payload 里的 `cwd`；OpenCode 的插件会把当前项目目录补为转发事件的 `raw.cwd`，用于生成该前缀。无法识别目录时，标题保持原样。
+
 ## 通知方式：Bark 与 ntfy
 
 AgentNotify 把事件格式化后，通过 provider 推到你的设备。当前支持两种 provider，用 `.env` 里的 `AGENT_NOTIFY_PROVIDER` 选择，默认 `bark`。
