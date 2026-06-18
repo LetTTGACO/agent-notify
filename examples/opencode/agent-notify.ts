@@ -10,26 +10,7 @@ interface AgentNotifyConfig {
   serverUrl: string;
   token: string;
   timeoutMs: number;
-  completionMinSeconds?: number;
   debugLogPath?: string;
-}
-
-const NOTIFY_EVENT_TYPES = new Set([
-  "permission.v2.asked",
-  "permission.asked",
-  "question.asked",
-  "session.error",
-]);
-
-interface OpenCodeNotificationFilterOptions {
-  completionMinSeconds?: number;
-  nowMs?: () => number;
-}
-
-interface SessionState {
-  startedAtMs: number;
-  failed: boolean;
-  completed: boolean;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -59,69 +40,19 @@ function getStatusType(raw: unknown): string | undefined {
   return typeof status.type === "string" ? status.type : undefined;
 }
 
-function immediateShouldNotify(raw: unknown): boolean {
-  const type = getEventType(raw);
-  return typeof type === "string" && NOTIFY_EVENT_TYPES.has(type);
-}
-
-export function createOpenCodeNotificationFilter(
-  options: OpenCodeNotificationFilterOptions = {},
-) {
-  const completionMinSeconds = options.completionMinSeconds ?? 120;
-  const nowMs = options.nowMs ?? Date.now;
-  const sessions = new Map<string, SessionState>();
-
-  function shouldNotifyCompletion(raw: unknown): boolean {
-    if (completionMinSeconds <= 0) return false;
-
-    const sessionID = getSessionID(raw);
-    if (!sessionID) return false;
-
-    const state = sessions.get(sessionID);
-    if (!state || state.failed || state.completed) return false;
-
-    const elapsedSeconds = (nowMs() - state.startedAtMs) / 1000;
-    state.completed = true;
-    if (elapsedSeconds < completionMinSeconds) return false;
-
-    return true;
-  }
-
-  return {
-    shouldNotify(raw: unknown): boolean {
-      const type = getEventType(raw);
-      const sessionID = getSessionID(raw);
-
-      if (type === "session.status" && sessionID && getStatusType(raw) === "busy") {
-        const state = sessions.get(sessionID);
-        if (!state || state.failed || state.completed) {
-          sessions.set(sessionID, {
-            startedAtMs: nowMs(),
-            failed: false,
-            completed: false,
-          });
-        }
-        return false;
-      }
-
-      if (type === "session.error" && sessionID) {
-        const state = sessions.get(sessionID);
-        if (state) {
-          state.failed = true;
-        }
-      }
-
-      if (type === "session.idle") {
-        return shouldNotifyCompletion(raw);
-      }
-
-      return immediateShouldNotify(raw);
-    },
-  };
-}
+const FORWARD_EVENT_TYPES = new Set([
+  "permission.v2.asked",
+  "permission.asked",
+  "question.asked",
+  "session.error",
+  "session.idle",
+]);
 
 export function shouldNotify(raw: unknown): boolean {
-  return immediateShouldNotify(raw);
+  const type = getEventType(raw);
+  if (typeof type !== "string") return false;
+  if (FORWARD_EVENT_TYPES.has(type)) return true;
+  return type === "session.status" && getStatusType(raw) === "busy";
 }
 
 export function summarizeOpenCodeEventForDebug(raw: unknown): Record<string, unknown> {
@@ -215,7 +146,6 @@ export function parseAgentNotifyConfig(raw: Record<string, unknown>): AgentNotif
     serverUrl: readRequiredString(raw, "serverUrl"),
     token: readRequiredString(raw, "token"),
     timeoutMs: readOptionalNumber(raw, "timeoutMs") ?? DEFAULT_TIMEOUT_MS,
-    completionMinSeconds: readOptionalNumber(raw, "completionMinSeconds"),
     debugLogPath: readOptionalString(raw, "debugLogPath"),
   };
 }
@@ -226,12 +156,8 @@ function readAgentNotifyConfig(): AgentNotifyConfig {
   return parseAgentNotifyConfig(raw);
 }
 
-async function notify(
-  config: AgentNotifyConfig,
-  filter: ReturnType<typeof createOpenCodeNotificationFilter>,
-  raw: unknown,
-) {
-  const forwarded = filter.shouldNotify(raw);
+async function notify(config: AgentNotifyConfig, raw: unknown) {
+  const forwarded = shouldNotify(raw);
   writeDebugLog(config, raw, forwarded);
   if (!forwarded) return;
   await sendOpenCodeEvent(config.serverUrl, config.token, config.timeoutMs, raw);
@@ -242,13 +168,10 @@ async function notify(
 // See https://opencode.ai/docs/plugins/ for the plugin API.
 export const AgentNotifyPlugin = async () => {
   const config = readAgentNotifyConfig();
-  const filter = createOpenCodeNotificationFilter({
-    completionMinSeconds: config.completionMinSeconds,
-  });
 
   return {
     event: async ({ event }: { event: { type: string; [key: string]: unknown } }) => {
-      await notify(config, filter, event);
+      await notify(config, event);
     },
   };
 };
