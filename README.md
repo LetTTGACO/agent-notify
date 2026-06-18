@@ -12,7 +12,7 @@ English / [中文](README-CN.md)
 [![](https://img.shields.io/github/last-commit/LetTTGACO/agent-notify?color=c4f042\&labelColor=black\&style=flat-square)](https://github.com/LetTTGACO/agent-notify/commits/main)
 
 </div>
----
+
 
 AgentNotify receives hook events from OpenCode, Claude Code, and Codex, formats short action-focused notifications on the server, logs safe event summaries, and pushes them to your phone or desktop via Bark or ntfy.
 

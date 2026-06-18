@@ -12,7 +12,7 @@
 [![](https://img.shields.io/github/last-commit/LetTTGACO/agent-notify?color=c4f042\&labelColor=black\&style=flat-square)](https://github.com/LetTTGACO/agent-notify/commits/main)
 
 </div>
----
+
 
 AgentNotify 接收 OpenCode、Claude Code 和 Codex 的 hook 事件，在服务端格式化成简短、行动导向的通知，记录安全的事件摘要，并通过 Bark 或 ntfy 推送到你的手机或桌面。
 
