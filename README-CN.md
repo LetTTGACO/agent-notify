@@ -1,6 +1,20 @@
-# AgentNotify
+<div align="center">
 
-AgentNotify 是一个给 AI 编程代理使用的个人通知中枢。它接收 OpenCode、Claude Code 和 Codex 的 hook 事件，在服务端格式化成简短、行动导向的通知，记录安全的事件摘要，并通过 Bark 或 ntfy 推送到你的手机或桌面。
+## AgentNotify：AI 编程代理的个人通知中枢
+
+[English](README.md) / 中文
+
+[人类安装手册](docs/human-manual-cn.md)
+
+[![](https://img.shields.io/github/stars/LetTTGACO/agent-notify?labelColor\&style=flat-square\&color=ffcb47)](https://github.com/LetTTGACO/agent-notify)
+[![](https://img.shields.io/github/issues/LetTTGACO/agent-notify?labelColor=black\&style=flat-square\&color=ff80eb)](https://github.com/LetTTGACO/agent-notify/issues)
+[![](https://img.shields.io/github/contributors/LetTTGACO/agent-notify?color=c4f042\&labelColor=black\&style=flat-square)](https://github.com/LetTTGACO/agent-notify/graphs/contributors)
+[![](https://img.shields.io/github/last-commit/LetTTGACO/agent-notify?color=c4f042\&labelColor=black\&style=flat-square)](https://github.com/LetTTGACO/agent-notify/commits/main)
+
+</div>
+---
+
+AgentNotify 接收 OpenCode、Claude Code 和 Codex 的 hook 事件，在服务端格式化成简短、行动导向的通知，记录安全的事件摘要，并通过 Bark 或 ntfy 推送到你的手机或桌面。
 
 ## 它能做什么
 

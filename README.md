@@ -1,12 +1,26 @@
-# AgentNotify
+<div align="center">
 
-AgentNotify is a personal notification hub for AI coding agents. It receives hook events from OpenCode, Claude Code, and Codex, formats short action-focused notifications on the server, logs safe event summaries, and pushes them to your phone or desktop via Bark or ntfy.
+## AgentNotify: Personal Notification Hub for AI Coding Agents
+
+English / [中文](README-CN.md)
+
+[Human Installation Manual](docs/human-manual-en.md)
+
+[![](https://img.shields.io/github/stars/LetTTGACO/agent-notify?labelColor\&style=flat-square\&color=ffcb47)](https://github.com/LetTTGACO/agent-notify)
+[![](https://img.shields.io/github/issues/LetTTGACO/agent-notify?labelColor=black\&style=flat-square\&color=ff80eb)](https://github.com/LetTTGACO/agent-notify/issues)
+[![](https://img.shields.io/github/contributors/LetTTGACO/agent-notify?color=c4f042\&labelColor=black\&style=flat-square)](https://github.com/LetTTGACO/agent-notify/graphs/contributors)
+[![](https://img.shields.io/github/last-commit/LetTTGACO/agent-notify?color=c4f042\&labelColor=black\&style=flat-square)](https://github.com/LetTTGACO/agent-notify/commits/main)
+
+</div>
+---
+
+AgentNotify receives hook events from OpenCode, Claude Code, and Codex, formats short action-focused notifications on the server, logs safe event summaries, and pushes them to your phone or desktop via Bark or ntfy.
 
 ## What it does
 
 - Receives raw hook events from OpenCode, Claude Code, and Codex.
 - Formats short, action-focused notifications server-side (permission requests, prompts, errors, long-task completion).
-- Keeps quick turns silent and only pings when a session has run long enough to matter.
+- Keeps short tasks quiet and only pings when a session has run long enough to matter.
 - Tames rapid notify-handle-continue loops with a session-scoped cooldown for permission/question alerts.
 - Pushes through Bark (iPhone / Apple Watch) or ntfy (cross-platform).
 
@@ -33,18 +47,16 @@ The adapter is fail-safe: server errors never block the agent. Long-task complet
 
 ## Documentation
 
-The manuals below are the installation guides — start there for full setup, including adapter installation, hook configuration, and Docker deployment.
-
-For humans:
+Human manual:
 
 - [人类使用手册（中文）](docs/human-manual-cn.md)
 - [Human Manual (English)](docs/human-manual-en.md)
 
-For AI coding agents — an end-to-end deployment playbook written for the agent to follow. Send the link below to your agent to get started in one step:
+End-to-end deployment manual for AI coding agents. Send the document link below to your agent, and it can follow the manual step by step:
 
 - [AgentNotify AI Operation Manual](docs/ai-operation-manual.md)
 
-Send this to your agent to deploy AgentNotify from the manual:
+Send this to your AI agent to deploy AgentNotify:
 
 ```
 Follow this manual to set up and configure AgentNotify:
