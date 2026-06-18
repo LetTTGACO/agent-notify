@@ -33,7 +33,7 @@ describe("project title helpers", () => {
   it("prefixes a title when a project name can be derived", () => {
     expect(
       prefixTitleWithProject("需要批准", "/Users/1874w/@1874/agent-notify"),
-    ).toBe("[agent-notify] 需要批准");
+    ).toBe("agent-notify 需要批准");
   });
 
   it("keeps the original title when no project name can be derived", () => {
@@ -42,7 +42,7 @@ describe("project title helpers", () => {
 
   it("normalizes whitespace in the project name", () => {
     expect(prefixTitleWithProject("Question", "/tmp/my\nproject")).toBe(
-      "[my project] Question",
+      "my project Question",
     );
   });
 });

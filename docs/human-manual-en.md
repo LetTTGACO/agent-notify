@@ -46,7 +46,7 @@ The cooldown is scoped per `token + agent + session`, so parallel sessions and d
 
 ## Notification title project-name prefix
 
-Notification titles are automatically prefixed with the project name when AgentNotify can identify a working directory, for example `[agent-notify] Approve permission`. Claude Code and Codex use the `cwd` field from the hook payload. The OpenCode plugin adds the current project directory as `raw.cwd` before forwarding the event so the server can generate the same prefix. If no usable directory is available, the title stays unchanged.
+Notification titles are automatically prefixed with the project name when AgentNotify can identify a working directory, for example `agent-notify Approve permission`. Claude Code and Codex use the `cwd` field from the hook payload. The OpenCode plugin adds the current project directory as `raw.cwd` before forwarding the event so the server can generate the same prefix. If no usable directory is available, the title stays unchanged.
 
 ## Notification providers: Bark and ntfy
 

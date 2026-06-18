@@ -176,7 +176,7 @@ describe("Codex formatter", () => {
       },
     });
 
-    expect(formatted.notification.title).toBe("[agent-notify] Approve permission");
+    expect(formatted.notification.title).toBe("agent-notify Approve permission");
   });
 
   it("keeps Codex notification titles unchanged when cwd is missing", () => {

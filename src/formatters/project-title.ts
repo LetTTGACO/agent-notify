@@ -22,5 +22,5 @@ export function projectNameFromCwd(cwd: unknown): string | undefined {
 
 export function prefixTitleWithProject(title: string, cwd: unknown): string {
   const projectName = projectNameFromCwd(cwd);
-  return projectName ? `[${projectName}] ${title}` : title;
+  return projectName ? `${projectName} ${title}` : title;
 }

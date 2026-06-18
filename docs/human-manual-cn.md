@@ -46,7 +46,7 @@ Codex 侧支持这些 hooks：
 
 ## 通知标题的项目名前缀
 
-通知标题会在能够识别项目目录时自动加项目名前缀，例如 `[agent-notify] 需要批准`。Claude Code 和 Codex 使用 hook payload 里的 `cwd`；OpenCode 的插件会把当前项目目录补为转发事件的 `raw.cwd`，用于生成该前缀。无法识别目录时，标题保持原样。
+通知标题会在能够识别项目目录时自动加项目名前缀，例如 `agent-notify 需要批准`。Claude Code 和 Codex 使用 hook payload 里的 `cwd`；OpenCode 的插件会把当前项目目录补为转发事件的 `raw.cwd`，用于生成该前缀。无法识别目录时，标题保持原样。
 
 ## 通知方式：Bark 与 ntfy
 

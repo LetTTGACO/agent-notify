@@ -174,7 +174,7 @@ describe("Claude Code formatter", () => {
       },
     });
 
-    expect(formatted.notification.title).toBe("[agent-notify] Approve permission");
+    expect(formatted.notification.title).toBe("agent-notify Approve permission");
   });
 
   it("prefixes Claude Code Chinese titles with the project name from cwd", () => {
@@ -190,6 +190,6 @@ describe("Claude Code formatter", () => {
       { language: "zh" },
     );
 
-    expect(formatted.notification.title).toBe("[agent-notify] 待审阅");
+    expect(formatted.notification.title).toBe("agent-notify 待审阅");
   });
 });

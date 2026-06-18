@@ -328,7 +328,7 @@ describe("OpenCode formatter", () => {
       },
     });
 
-    expect(formatted.notification.title).toBe("[agent-notify] Question");
+    expect(formatted.notification.title).toBe("agent-notify Question");
   });
 
   it("keeps OpenCode notification titles unchanged when cwd is unusable", () => {
