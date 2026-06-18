@@ -27,6 +27,12 @@ function getProperties(raw: unknown): Record<string, unknown> {
   return isRecord(raw.properties) ? raw.properties : raw;
 }
 
+export function addOpenCodeCwd(raw: unknown, directory: string): unknown {
+  if (!isRecord(raw)) return raw;
+  if (typeof raw.cwd === "string" && raw.cwd.trim()) return raw;
+  return { ...raw, cwd: directory };
+}
+
 function getStatusType(raw: unknown): string | undefined {
   const status = getProperties(raw).status;
   if (!isRecord(status)) return undefined;
@@ -149,22 +155,27 @@ function readAgentNotifyConfig(): AgentNotifyConfig {
   return parseAgentNotifyConfig(raw);
 }
 
-async function notify(config: AgentNotifyConfig, raw: unknown) {
-  const forwarded = shouldNotify(raw);
-  writeDebugLog(config, raw, forwarded);
+async function notify(config: AgentNotifyConfig, raw: unknown, directory: string) {
+  const rawWithCwd = addOpenCodeCwd(raw, directory);
+  const forwarded = shouldNotify(rawWithCwd);
+  writeDebugLog(config, rawWithCwd, forwarded);
   if (!forwarded) return;
-  await sendOpenCodeEvent(config.serverUrl, config.token, config.timeoutMs, raw);
+  await sendOpenCodeEvent(config.serverUrl, config.token, config.timeoutMs, rawWithCwd);
 }
 
 // OpenCode plugin: use the unified `event` hook so we receive the real event
 // object, including v1 and v2 permission event shapes.
 // See https://opencode.ai/docs/plugins/ for the plugin API.
-export const AgentNotifyPlugin = async () => {
+export const AgentNotifyPlugin = async ({
+  directory,
+}: {
+  directory: string;
+}) => {
   const config = readAgentNotifyConfig();
 
   return {
     event: async ({ event }: { event: { type: string; [key: string]: unknown } }) => {
-      await notify(config, event);
+      await notify(config, event, directory);
     },
   };
 };

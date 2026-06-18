@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  addOpenCodeCwd,
   parseAgentNotifyConfig,
   shouldNotify,
   summarizeOpenCodeEventForDebug,
@@ -64,5 +65,39 @@ describe("OpenCode plugin example", () => {
       }),
     ).toBe(false);
     expect(shouldNotify({ type: "session.status" })).toBe(false);
+  });
+
+  it("adds top-level cwd to OpenCode raw events before forwarding", () => {
+    const raw = {
+      id: "evt_project_1",
+      type: "question.asked",
+      properties: {
+        sessionID: "session_project_1",
+      },
+    };
+
+    expect(addOpenCodeCwd(raw, "/Users/1874w/@1874/agent-notify")).toEqual({
+      ...raw,
+      cwd: "/Users/1874w/@1874/agent-notify",
+    });
+  });
+
+  it("does not override an existing string cwd on OpenCode raw events", () => {
+    const raw = {
+      id: "evt_project_2",
+      type: "question.asked",
+      cwd: "/tmp/existing-project",
+      properties: {
+        sessionID: "session_project_2",
+      },
+    };
+
+    expect(addOpenCodeCwd(raw, "/Users/1874w/@1874/agent-notify")).toEqual(raw);
+  });
+
+  it("leaves non-object OpenCode raw values unchanged when adding cwd", () => {
+    expect(addOpenCodeCwd("not-an-object", "/Users/1874w/project")).toBe(
+      "not-an-object",
+    );
   });
 });
