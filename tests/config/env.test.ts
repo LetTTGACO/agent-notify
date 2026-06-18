@@ -129,6 +129,57 @@ describe("config parsing", () => {
     ).toThrow();
   });
 
+  it("defaults OpenCode completion threshold to 120", () => {
+    const config = parseConfig({
+      AGENT_NOTIFY_TOKENS: "macbook:abc",
+      BARK_ENDPOINT: "https://api.day.app/key",
+    });
+
+    expect(config.opencodeCompletionMinSeconds).toBe(120);
+  });
+
+  it("disables OpenCode completion threshold when set to 0", () => {
+    const config = parseConfig({
+      AGENT_NOTIFY_TOKENS: "macbook:abc",
+      BARK_ENDPOINT: "https://api.day.app/key",
+      AGENT_NOTIFY_OPENCODE_COMPLETION_MIN_SECONDS: "0",
+    });
+
+    expect(config.opencodeCompletionMinSeconds).toBe(0);
+  });
+
+  it("parses OpenCode completion threshold", () => {
+    const config = parseConfig({
+      AGENT_NOTIFY_TOKENS: "macbook:abc",
+      BARK_ENDPOINT: "https://api.day.app/key",
+      AGENT_NOTIFY_OPENCODE_COMPLETION_MIN_SECONDS: "120",
+    });
+
+    expect(config.opencodeCompletionMinSeconds).toBe(120);
+  });
+
+  it("rejects negative OpenCode completion threshold", () => {
+    expect(() =>
+      parseConfig({
+        AGENT_NOTIFY_TOKENS: "macbook:abc",
+        BARK_ENDPOINT: "https://api.day.app/key",
+        AGENT_NOTIFY_OPENCODE_COMPLETION_MIN_SECONDS: "-1",
+      }),
+    ).toThrow();
+  });
+
+  it("documents OpenCode completion threshold in the env example", () => {
+    const contents = readFileSync(".env.example", "utf8");
+
+    expect(contents).toContain("AGENT_NOTIFY_OPENCODE_COMPLETION_MIN_SECONDS=");
+  });
+
+  it("passes OpenCode completion threshold through Docker compose", () => {
+    const contents = readFileSync("deploy/docker/docker-compose.yml", "utf8");
+
+    expect(contents).toContain("AGENT_NOTIFY_OPENCODE_COMPLETION_MIN_SECONDS");
+  });
+
   it("documents Codex completion threshold in the env example", () => {
     const contents = readFileSync(".env.example", "utf8");
 
