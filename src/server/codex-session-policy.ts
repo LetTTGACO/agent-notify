@@ -113,6 +113,15 @@ export class CodexSessionPolicy {
       const session = this.sessions.get(key);
       this.sessions.delete(key);
 
+      if (permissionMode(event.raw) === "bypassPermissions") {
+        return {
+          action: "suppress",
+          reason: "permission_bypassed",
+          sourceEvent,
+          sessionId: id,
+        };
+      }
+
       if (this.completionMinSeconds <= 0) {
         return {
           action: "suppress",

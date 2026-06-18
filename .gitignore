@@ -6,3 +6,4 @@ data/
 *.log
 docs/superpowers/
 .idea
+.pnpm-store
