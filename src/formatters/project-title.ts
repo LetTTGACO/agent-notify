@@ -11,6 +11,7 @@ export function projectNameFromCwd(cwd: unknown): string | undefined {
 
   const normalized = stripTrailingSeparators(oneLine(cwd).replace(/\\/g, "/"));
   if (!normalized || normalized === "/") return undefined;
+  if (/^[A-Za-z]:$/.test(normalized)) return undefined;
 
   const parts = normalized.split("/").filter(Boolean);
   const last = parts.at(-1);

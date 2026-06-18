@@ -25,6 +25,8 @@ describe("project title helpers", () => {
 
   it("returns undefined for unusable cwd values", () => {
     expect(projectNameFromCwd("/")).toBeUndefined();
+    expect(projectNameFromCwd("C:\\")).toBeUndefined();
+    expect(projectNameFromCwd("D:/")).toBeUndefined();
     expect(projectNameFromCwd("   ")).toBeUndefined();
     expect(projectNameFromCwd(undefined)).toBeUndefined();
     expect(projectNameFromCwd({ cwd: "/Users/1874w/project" })).toBeUndefined();
