@@ -128,13 +128,13 @@ Explain to the user:
 
 ### 1.3 Start and verify
 
-Start the server (foreground dev mode, so logs are visible):
+Ask the user to start the server in a separate terminal:
 
 ```bash
 pnpm dev
 ```
 
-`agent-notify listening on 0.0.0.0:8787` means it started. In another terminal run:
+Do not start this long-running command yourself unless the user explicitly asks you to. `agent-notify listening on 0.0.0.0:8787` means it started. After the user confirms the server is running, run this short verification command yourself:
 
 ```bash
 pnpm agent-notify doctor
@@ -367,7 +367,7 @@ Quick triage:
 
 ### 4.5 Send a test notification (optional)
 
-To confirm the provider link works, have the user run:
+To confirm the provider link works, ask the user whether to send a test notification. If they agree, run:
 
 ```bash
 pnpm agent-notify test
