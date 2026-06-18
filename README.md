@@ -56,7 +56,7 @@ End-to-end deployment manual for AI coding agents. Send the document link below 
 
 - [AgentNotify AI Operation Manual](docs/ai-operation-manual.md)
 
-Send this to your AI agent to deploy AgentNotify:
+Send this to your AI agent to config AgentNotify:
 
 ```
 Follow this manual to set up and configure AgentNotify:
