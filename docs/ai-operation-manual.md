@@ -14,13 +14,15 @@ Three hard conventions run through the entire manual. Never violate them:
 
 3. **Ask before acting.** Provider choice, which agents to integrate, whether to use Docker — these decisions must be put to the user before you act. You may recommend, but not decide for them.
 
-The order is fixed: **Before Step 0 if needed → Step 0 → 1 → 2 → 3 → 4 → 5**. Treat this order as a strict boundary: do not inspect or modify config files for later steps before reaching those steps. Only deploy the parts for the agents the user selected in Step 0.
+The order is fixed: **Before Step 0 → Step 0 → 1 → 2 → 3 → 4 → 5**. Treat this order as a strict boundary: do not inspect or modify config files for later steps before reaching those steps. Only deploy the parts for the agents the user selected in Step 0.
 
 ---
 
 ## Before Step 0 — Require a local project checkout
 
 This manual must be used from inside the AgentNotify project root. If your current working directory is not the AgentNotify project root, stop before Step 0 and ask the user to manually clone this repository, enter the project root, and then use this manual again from there.
+
+Your first action after reading this section must be to verify that the current working directory is the AgentNotify project root. If it is not, stop. Do not continue to runtime detection, dependency checks, server config, Provider config, agent adapter config, hook files, or existing installation checks.
 
 Repository URL:
 
