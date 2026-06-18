@@ -28,17 +28,9 @@ Repository URL:
 https://github.com/LetTTGACO/agent-notify
 ```
 
-Do not assume the repository is already cloned. Also do not assume it is missing just because your current directory is wrong.
+Use your own context and local inspection to decide whether the current working directory is already a usable AgentNotify checkout. Only continue to Step 0 after your working directory is the AgentNotify project root.
 
-First determine which case applies:
-
-- You are already inside the AgentNotify project root.
-- The repository exists locally, but you are not currently inside it.
-- The repository is not cloned on this machine yet.
-
-Only continue to Step 0 after your working directory is the AgentNotify project root.
-
-If the repository already exists locally, change into that directory. If it does not exist yet, ask the user where they want it cloned. Do not choose the local clone path for them. After the user provides a path, clone the GitHub repository there and enter it.
+If the current working directory is not a usable checkout, ask the user whether they want to clone the repository into the current directory or provide another location. Do not choose a clone path for them.
 
 ---
 
