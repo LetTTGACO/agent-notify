@@ -815,6 +815,38 @@ describe("server app", () => {
     });
     expect(await res.json()).toEqual({ ok: true, notified: false });
     expect(mockProvider.send).not.toHaveBeenCalled();
+
+    // idle above threshold: fresh busy→idle cycle notifies completed.
+    // The previous idle deleted the session, so re-record startedAtMs first.
+    nowMs += 1;
+    res = await app.request("/events", {
+      method: "POST",
+      body: JSON.stringify({
+        agent: "opencode",
+        raw: {
+          type: "session.status",
+          properties: { sessionID: sessionId, status: { type: "busy" } },
+        },
+      }),
+      headers: authHeaders,
+    });
+    expect(await res.json()).toEqual({ ok: true, notified: false });
+
+    nowMs += 130_000;
+    res = await app.request("/events", {
+      method: "POST",
+      body: JSON.stringify({
+        agent: "opencode",
+        raw: { type: "session.idle", properties: { sessionID: sessionId } },
+      }),
+      headers: authHeaders,
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, eventId: expect.any(String) });
+    expect(mockProvider.send).toHaveBeenCalled();
+    expect(mockProvider.send).toHaveBeenCalledWith(
+      expect.objectContaining({ group: "OpenCode" }),
+    );
   });
 
   it("logs a JSONL suppressed entry for Claude Code UserPromptSubmit", async () => {
