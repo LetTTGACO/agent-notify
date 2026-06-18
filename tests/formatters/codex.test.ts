@@ -161,4 +161,33 @@ describe("Codex formatter", () => {
     expect(formatted.notification.group).toBe("Codex");
     expect(formatted.notification.title).toBe("待审阅");
   });
+
+  it("prefixes Codex notification titles with the project name from cwd", () => {
+    const formatted = formatCodexEvent({
+      agent: "codex",
+      raw: {
+        hook_event_name: "PermissionRequest",
+        session_id: "codex_project_1",
+        cwd: "/Users/1874w/@1874/agent-notify",
+        tool_name: "Bash",
+        tool_input: {
+          command: "pnpm test",
+        },
+      },
+    });
+
+    expect(formatted.notification.title).toBe("[agent-notify] Approve permission");
+  });
+
+  it("keeps Codex notification titles unchanged when cwd is missing", () => {
+    const formatted = formatCodexEvent({
+      agent: "codex",
+      raw: {
+        hook_event_name: "Stop",
+        session_id: "codex_project_2",
+      },
+    });
+
+    expect(formatted.notification.title).toBe("Ready to review");
+  });
 });

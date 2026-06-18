@@ -7,6 +7,7 @@ import {
   defaultNotificationLanguage,
   type NotificationLanguage,
 } from "../core/language.js";
+import { prefixTitleWithProject } from "./project-title.js";
 
 const MAX_BODY_LENGTH = 80;
 const OPENCODE_ICON_URL = "https://opencode.ai/apple-touch-icon.png";
@@ -141,6 +142,7 @@ export function formatOpenCodeEvent(
   const raw = requireRawRecord(event.raw);
   const sourceEvent = requireEventType(raw);
   const properties = getProperties(raw);
+  const title = (value: string) => prefixTitleWithProject(value, raw.cwd);
 
   if (sourceEvent === "permission.v2.asked") {
     const action = getString(properties.action) ?? "permission";
@@ -152,7 +154,7 @@ export function formatOpenCodeEvent(
       sourceEvent,
       sessionId: getString(properties.sessionID),
       notification: {
-        title: permissionTitle(action, language),
+        title: title(permissionTitle(action, language)),
         body,
         urgency: "time_sensitive",
         group: "OpenCode",
@@ -171,7 +173,7 @@ export function formatOpenCodeEvent(
       sourceEvent,
       sessionId: getString(properties.sessionID),
       notification: {
-        title: permissionTitle(permission, language),
+        title: title(permissionTitle(permission, language)),
         body,
         urgency: "time_sensitive",
         group: "OpenCode",
@@ -187,7 +189,7 @@ export function formatOpenCodeEvent(
       sourceEvent,
       sessionId: getString(properties.sessionID),
       notification: {
-        title: questionTitle(language),
+        title: title(questionTitle(language)),
         body: questionBody(properties, language),
         urgency: "time_sensitive",
         group: "OpenCode",
@@ -203,7 +205,7 @@ export function formatOpenCodeEvent(
       sourceEvent,
       sessionId: getString(properties.sessionID) ?? getString(raw.sessionID),
       notification: {
-        title: completedTitle(language),
+        title: title(completedTitle(language)),
         body: completedBody(language),
         urgency: "time_sensitive",
         group: "OpenCode",
@@ -226,7 +228,7 @@ export function formatOpenCodeEvent(
       sourceEvent,
       sessionId: getString(properties.sessionID) ?? getString(raw.sessionID),
       notification: {
-        title: failedTitle(language),
+        title: title(failedTitle(language)),
         body: truncate(body),
         urgency: "time_sensitive",
         group: "OpenCode",

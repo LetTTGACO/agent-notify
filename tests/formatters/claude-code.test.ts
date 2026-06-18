@@ -161,4 +161,35 @@ describe("Claude Code formatter", () => {
     expect(formatted.kind).toBe("completed");
     expect(formatted.notification.group).toBe("Claude Code");
   });
+
+  it("prefixes Claude Code notification titles with the project name from cwd", () => {
+    const formatted = formatClaudeCodeEvent({
+      agent: "claude-code",
+      raw: {
+        hook_event_name: "Notification",
+        notification_type: "permission_prompt",
+        session_id: "claude_project_1",
+        cwd: "/Users/1874w/@1874/agent-notify",
+        message: "Claude needs permission to use Bash",
+      },
+    });
+
+    expect(formatted.notification.title).toBe("[agent-notify] Approve permission");
+  });
+
+  it("prefixes Claude Code Chinese titles with the project name from cwd", () => {
+    const formatted = formatClaudeCodeEvent(
+      {
+        agent: "claude-code",
+        raw: {
+          hook_event_name: "Stop",
+          session_id: "claude_project_zh",
+          cwd: "/Users/1874w/@1874/agent-notify",
+        },
+      },
+      { language: "zh" },
+    );
+
+    expect(formatted.notification.title).toBe("[agent-notify] 待审阅");
+  });
 });

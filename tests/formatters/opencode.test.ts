@@ -308,4 +308,42 @@ describe("OpenCode formatter", () => {
       }),
     ).not.toThrow("OpenCode raw payload is missing type");
   });
+
+  it("prefixes OpenCode notification titles with the project name from cwd", () => {
+    const formatted = formatOpenCodeEvent({
+      agent: "opencode",
+      raw: {
+        id: "evt_project_1",
+        type: "question.asked",
+        cwd: "/Users/1874w/@1874/agent-notify",
+        properties: {
+          id: "question_project_1",
+          sessionID: "session_project_1",
+          questions: [
+            {
+              question: "Pick one option",
+            },
+          ],
+        },
+      },
+    });
+
+    expect(formatted.notification.title).toBe("[agent-notify] Question");
+  });
+
+  it("keeps OpenCode notification titles unchanged when cwd is unusable", () => {
+    const formatted = formatOpenCodeEvent({
+      agent: "opencode",
+      raw: {
+        id: "evt_project_2",
+        type: "session.idle",
+        cwd: "/",
+        properties: {
+          sessionID: "session_project_2",
+        },
+      },
+    });
+
+    expect(formatted.notification.title).toBe("Ready to review");
+  });
 });

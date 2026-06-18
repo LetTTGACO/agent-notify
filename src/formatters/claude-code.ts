@@ -7,6 +7,7 @@ import {
   defaultNotificationLanguage,
   type NotificationLanguage,
 } from "../core/language.js";
+import { prefixTitleWithProject } from "./project-title.js";
 
 const MAX_BODY_LENGTH = 80;
 const CLAUDE_CODE_ICON_URL =
@@ -112,6 +113,7 @@ export function formatClaudeCodeEvent(
   const language = languageFromOptions(options);
   const raw = requireRawRecord(event.raw);
   const sourceEvent = requireHookEvent(raw);
+  const title = (value: string) => prefixTitleWithProject(value, raw.cwd);
 
   if (sourceEvent === "Notification") {
     const notificationType = getString(raw.notification_type);
@@ -123,7 +125,7 @@ export function formatClaudeCodeEvent(
       sourceEvent,
       sessionId: sessionId(raw),
       notification: {
-        title: isPermission ? permissionTitle(language) : questionTitle(language),
+        title: title(isPermission ? permissionTitle(language) : questionTitle(language)),
         body: notificationMessage(raw, language),
         urgency: "time_sensitive",
         group: "Claude Code",
@@ -139,7 +141,7 @@ export function formatClaudeCodeEvent(
       sourceEvent,
       sessionId: sessionId(raw),
       notification: {
-        title: completedTitle(language),
+        title: title(completedTitle(language)),
         body: completedBody(language),
         urgency: "time_sensitive",
         group: "Claude Code",
@@ -155,7 +157,7 @@ export function formatClaudeCodeEvent(
       sourceEvent,
       sessionId: sessionId(raw),
       notification: {
-        title: failedTitle(language),
+        title: title(failedTitle(language)),
         body: failureMessage(raw, language),
         urgency: "time_sensitive",
         group: "Claude Code",

@@ -7,6 +7,7 @@ import {
   defaultNotificationLanguage,
   type NotificationLanguage,
 } from "../core/language.js";
+import { prefixTitleWithProject } from "./project-title.js";
 
 const MAX_BODY_LENGTH = 80;
 const CODEX_ICON_URL =
@@ -102,6 +103,7 @@ export function formatCodexEvent(
   const language = languageFromOptions(options);
   const raw = requireRawRecord(event.raw);
   const sourceEvent = requireHookEvent(raw);
+  const title = (value: string) => prefixTitleWithProject(value, raw.cwd);
 
   if (sourceEvent === "PermissionRequest") {
     return {
@@ -110,7 +112,7 @@ export function formatCodexEvent(
       sourceEvent,
       sessionId: sessionId(raw),
       notification: {
-        title: permissionTitle(language),
+        title: title(permissionTitle(language)),
         body: permissionBody(raw, language),
         urgency: "time_sensitive",
         group: "Codex",
@@ -126,7 +128,7 @@ export function formatCodexEvent(
       sourceEvent,
       sessionId: sessionId(raw),
       notification: {
-        title: completedTitle(language),
+        title: title(completedTitle(language)),
         body: completionBody(raw, language),
         urgency: "time_sensitive",
         group: "Codex",
