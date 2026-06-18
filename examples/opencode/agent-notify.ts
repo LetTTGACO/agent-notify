@@ -27,13 +27,6 @@ function getProperties(raw: unknown): Record<string, unknown> {
   return isRecord(raw.properties) ? raw.properties : raw;
 }
 
-function getSessionID(raw: unknown): string | undefined {
-  const properties = getProperties(raw);
-  return typeof properties.sessionID === "string" && properties.sessionID.trim()
-    ? properties.sessionID
-    : undefined;
-}
-
 function getStatusType(raw: unknown): string | undefined {
   const status = getProperties(raw).status;
   if (!isRecord(status)) return undefined;
