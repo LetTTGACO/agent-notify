@@ -245,7 +245,7 @@ describe("ClaudeCodeSessionPolicy", () => {
     });
   });
 
-  it("returns undefined cwd when the first event has no cwd", () => {
+  it("pins cwd from the next event when the first event carried no cwd", () => {
     let nowMs = 1_000;
     const policy = new ClaudeCodeSessionPolicy({
       completionMinSeconds: 120,

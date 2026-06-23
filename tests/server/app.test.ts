@@ -1024,6 +1024,7 @@ describe("server app", () => {
     const sendMock = vi.mocked(mockProvider.send);
     const calls = sendMock.mock.calls;
     const sent = calls[calls.length - 1]?.[0];
+    expect(calls).toHaveLength(2);
     expect(sent?.title).toContain("openclaw");
     expect(sent?.title).not.toContain("src");
   });
