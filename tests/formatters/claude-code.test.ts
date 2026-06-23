@@ -192,4 +192,36 @@ describe("Claude Code formatter", () => {
 
     expect(formatted.notification.title).toBe("agent-notify 待审阅");
   });
+
+  it("uses options.cwd for the project prefix when provided, overriding raw.cwd", () => {
+    const formatted = formatClaudeCodeEvent(
+      {
+        agent: "claude-code",
+        raw: {
+          hook_event_name: "Notification",
+          notification_type: "permission_prompt",
+          session_id: "claude_project_1",
+          cwd: "/Users/1874w/@1874/openclaw/extensions/feishu/src",
+          message: "Claude needs permission",
+        },
+      },
+      { cwd: "/Users/1874w/@1874/openclaw" },
+    );
+    expect(formatted.notification.title).toContain("openclaw");
+    expect(formatted.notification.title).not.toContain("src");
+  });
+
+  it("falls back to raw.cwd when options.cwd is absent", () => {
+    const formatted = formatClaudeCodeEvent({
+      agent: "claude-code",
+      raw: {
+        hook_event_name: "Notification",
+        notification_type: "permission_prompt",
+        session_id: "claude_project_1",
+        cwd: "/Users/1874w/@1874/openclaw",
+        message: "Claude needs permission",
+      },
+    });
+    expect(formatted.notification.title).toContain("openclaw");
+  });
 });

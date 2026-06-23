@@ -346,4 +346,19 @@ describe("OpenCode formatter", () => {
 
     expect(formatted.notification.title).toBe("Ready to review");
   });
+
+  it("uses options.cwd for the project prefix when provided, overriding raw.cwd", () => {
+    const formatted = formatOpenCodeEvent(
+      {
+        agent: "opencode",
+        raw: {
+          type: "permission.asked",
+          cwd: "/Users/1874w/@1874/openclaw/sub",
+          properties: { sessionID: "oc_1", permission: "edit" },
+        },
+      },
+      { cwd: "/Users/1874w/@1874/openclaw" },
+    );
+    expect(formatted.notification.title).toContain("openclaw");
+  });
 });
