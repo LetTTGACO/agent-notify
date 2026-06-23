@@ -978,4 +978,53 @@ describe("server app", () => {
 
     expect(mockProvider.send).toHaveBeenCalledTimes(2);
   });
+
+  it("pins the project-name cwd across events in the same session", async () => {
+    const mockProvider = provider();
+    const app = createApp(appOptions(mockProvider));
+
+    const headers = {
+      "content-type": "application/json",
+      authorization: "Bearer secret",
+    };
+
+    // First event: establishes the pinned cwd for session_1.
+    await app.request("/events", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        agent: "claude-code",
+        raw: {
+          hook_event_name: "Notification",
+          notification_type: "permission_prompt",
+          session_id: "session_1",
+          cwd: "/Users/1874w/@1874/openclaw",
+          message: "Claude needs permission",
+        },
+      }),
+    });
+
+    // Second event on the same session: drifted cwd. The title must still
+    // reflect the pinned project name (openclaw), not the drifted segment (src).
+    await app.request("/events", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        agent: "claude-code",
+        raw: {
+          hook_event_name: "Notification",
+          notification_type: "permission_prompt",
+          session_id: "session_1",
+          cwd: "/Users/1874w/@1874/openclaw/extensions/feishu/src",
+          message: "Claude needs permission",
+        },
+      }),
+    });
+
+    const sendMock = vi.mocked(mockProvider.send);
+    const calls = sendMock.mock.calls;
+    const sent = calls[calls.length - 1]?.[0];
+    expect(sent?.title).toContain("openclaw");
+    expect(sent?.title).not.toContain("src");
+  });
 });
