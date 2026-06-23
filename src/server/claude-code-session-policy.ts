@@ -9,6 +9,11 @@ interface SessionState {
   startedAtMs: number;
 }
 
+interface PinnedCwd {
+  cwd: string;
+  startedAtMs: number;
+}
+
 export interface ClaudeCodeSessionPolicyOptions {
   completionMinSeconds: number;
   ttlMs?: number;
@@ -17,7 +22,7 @@ export interface ClaudeCodeSessionPolicyOptions {
 }
 
 export type ClaudeCodeSessionPolicyDecision =
-  | { action: "continue" }
+  | { action: "continue"; cwd?: string }
   | {
       action: "suppress";
       reason:
@@ -60,6 +65,7 @@ export class ClaudeCodeSessionPolicy {
   private readonly maxSessions: number;
   private readonly nowMs: () => number;
   private readonly sessions = new Map<string, SessionState>();
+  private readonly cwdBySession = new Map<string, PinnedCwd>();
 
   constructor(options: ClaudeCodeSessionPolicyOptions) {
     this.completionMinSeconds = options.completionMinSeconds;
@@ -78,6 +84,7 @@ export class ClaudeCodeSessionPolicy {
 
     const sourceEvent = hookEventName(event.raw);
     const id = sessionId(event.raw);
+    const pinnedCwd = this.resolveCwd(tokenName, id, event.raw);
 
     if (sourceEvent === "UserPromptSubmit") {
       if (!id) {
@@ -141,14 +148,14 @@ export class ClaudeCodeSessionPolicy {
         };
       }
 
-      return { action: "continue" };
+      return { action: "continue", cwd: pinnedCwd };
     }
 
     if (sourceEvent === "StopFailure" && id) {
       this.sessions.delete(this.key(tokenName, id));
     }
 
-    return { action: "continue" };
+    return { action: "continue", cwd: pinnedCwd };
   }
 
   sessionCount(): number {
@@ -159,11 +166,34 @@ export class ClaudeCodeSessionPolicy {
     return `${tokenName}:${sessionId}`;
   }
 
+  private resolveCwd(
+    tokenName: string,
+    id: string | undefined,
+    raw: unknown,
+  ): string | undefined {
+    if (!id) return undefined;
+    const key = this.key(tokenName, id);
+    const existing = this.cwdBySession.get(key);
+    if (existing) return existing.cwd;
+
+    const cwd = isRecord(raw) ? getString(raw.cwd) : undefined;
+    if (cwd) {
+      this.cwdBySession.set(key, { cwd, startedAtMs: this.nowMs() });
+      this.enforceMaxCwdSessions();
+    }
+    return cwd;
+  }
+
   private prune(): void {
     const now = this.nowMs();
     for (const [key, session] of this.sessions) {
       if (now - session.startedAtMs > this.ttlMs) {
         this.sessions.delete(key);
+      }
+    }
+    for (const [key, pinned] of this.cwdBySession) {
+      if (now - pinned.startedAtMs > this.ttlMs) {
+        this.cwdBySession.delete(key);
       }
     }
   }
@@ -182,6 +212,23 @@ export class ClaudeCodeSessionPolicy {
 
       if (!oldestKey) return;
       this.sessions.delete(oldestKey);
+    }
+  }
+
+  private enforceMaxCwdSessions(): void {
+    while (this.cwdBySession.size > this.maxSessions) {
+      let oldestKey: string | undefined;
+      let oldestStartedAt = Number.POSITIVE_INFINITY;
+
+      for (const [key, pinned] of this.cwdBySession) {
+        if (pinned.startedAtMs < oldestStartedAt) {
+          oldestStartedAt = pinned.startedAtMs;
+          oldestKey = key;
+        }
+      }
+
+      if (!oldestKey) return;
+      this.cwdBySession.delete(oldestKey);
     }
   }
 }
