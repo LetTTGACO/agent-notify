@@ -8,6 +8,13 @@ function codexEvent(hook_event_name: string, session_id = "session_1") {
   };
 }
 
+function codexCwdEvent(hook_event_name: string, cwd: string, session_id = "session_1") {
+  return {
+    agent: "codex" as const,
+    raw: { hook_event_name, session_id, cwd },
+  };
+}
+
 describe("CodexSessionPolicy", () => {
   it("records UserPromptSubmit without continuing to formatter", () => {
     const policy = new CodexSessionPolicy({
@@ -239,6 +246,50 @@ describe("CodexSessionPolicy", () => {
       reason: "missing_start",
       sourceEvent: "Stop",
       sessionId: "session_1",
+    });
+  });
+
+  it("pins the first-seen cwd on continue decisions and ignores later cwd changes", () => {
+    let nowMs = 1_000;
+    const policy = new CodexSessionPolicy({
+      completionMinSeconds: 120,
+      nowMs: () => nowMs,
+    });
+
+    policy.apply(codexCwdEvent("UserPromptSubmit", "/Users/1874w/@1874/openclaw"), "macbook");
+    nowMs += 121_000;
+
+    const stop = policy.apply(
+      codexCwdEvent("Stop", "/Users/1874w/@1874/openclaw/extensions/feishu/src"),
+      "macbook",
+    );
+    expect(stop).toEqual({
+      action: "continue",
+      cwd: "/Users/1874w/@1874/openclaw",
+    });
+  });
+
+  it("keeps pinned cwd across turns", () => {
+    let nowMs = 1_000;
+    const policy = new CodexSessionPolicy({
+      completionMinSeconds: 120,
+      nowMs: () => nowMs,
+    });
+
+    policy.apply(codexCwdEvent("UserPromptSubmit", "/Users/1874w/@1874/openclaw"), "macbook");
+    nowMs += 121_000;
+    policy.apply(codexCwdEvent("Stop", "/Users/1874w/@1874/openclaw/sub"), "macbook");
+
+    nowMs += 1_000;
+    policy.apply(codexCwdEvent("UserPromptSubmit", "/Users/1874w/@1874/openclaw/other"), "macbook");
+    nowMs += 121_000;
+    const stop = policy.apply(
+      codexCwdEvent("Stop", "/Users/1874w/@1874/openclaw/other/sub"),
+      "macbook",
+    );
+    expect(stop).toEqual({
+      action: "continue",
+      cwd: "/Users/1874w/@1874/openclaw",
     });
   });
 });

@@ -190,4 +190,20 @@ describe("Codex formatter", () => {
 
     expect(formatted.notification.title).toBe("Ready to review");
   });
+
+  it("uses options.cwd for the project prefix when provided, overriding raw.cwd", () => {
+    const formatted = formatCodexEvent(
+      {
+        agent: "codex",
+        raw: {
+          hook_event_name: "Stop",
+          session_id: "codex_1",
+          cwd: "/Users/1874w/@1874/openclaw/sub",
+          last_assistant_message: "done",
+        },
+      },
+      { cwd: "/Users/1874w/@1874/openclaw" },
+    );
+    expect(formatted.notification.title).toContain("openclaw");
+  });
 });

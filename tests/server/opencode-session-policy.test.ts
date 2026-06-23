@@ -25,6 +25,28 @@ function errorEvent(sessionID = "session_1") {
   };
 }
 
+function opencodeBusyEvent(cwd: string, sessionID = "session_1") {
+  return {
+    agent: "opencode" as const,
+    raw: {
+      type: "session.status",
+      cwd,
+      properties: { sessionID, status: { type: "busy" } },
+    },
+  };
+}
+
+function opencodeIdleEvent(cwd: string, sessionID = "session_1") {
+  return {
+    agent: "opencode" as const,
+    raw: {
+      type: "session.idle",
+      cwd,
+      properties: { sessionID },
+    },
+  };
+}
+
 describe("OpenCodeSessionPolicy", () => {
   it("records busy session.status without continuing to formatter", () => {
     const policy = new OpenCodeSessionPolicy({
@@ -256,6 +278,50 @@ describe("OpenCodeSessionPolicy", () => {
       reason: "missing_start",
       sourceEvent: "session.idle",
       sessionId: "session_1",
+    });
+  });
+
+  it("pins the first-seen cwd on continue decisions and ignores later cwd changes", () => {
+    let nowMs = 1_000;
+    const policy = new OpenCodeSessionPolicy({
+      completionMinSeconds: 120,
+      nowMs: () => nowMs,
+    });
+
+    policy.apply(opencodeBusyEvent("/Users/1874w/@1874/openclaw"), "macbook");
+    nowMs += 121_000;
+
+    const idle = policy.apply(
+      opencodeIdleEvent("/Users/1874w/@1874/openclaw/extensions/feishu/src"),
+      "macbook",
+    );
+    expect(idle).toEqual({
+      action: "continue",
+      cwd: "/Users/1874w/@1874/openclaw",
+    });
+  });
+
+  it("keeps pinned cwd across turns", () => {
+    let nowMs = 1_000;
+    const policy = new OpenCodeSessionPolicy({
+      completionMinSeconds: 120,
+      nowMs: () => nowMs,
+    });
+
+    policy.apply(opencodeBusyEvent("/Users/1874w/@1874/openclaw"), "macbook");
+    nowMs += 121_000;
+    policy.apply(opencodeIdleEvent("/Users/1874w/@1874/openclaw/sub"), "macbook");
+
+    nowMs += 1_000;
+    policy.apply(opencodeBusyEvent("/Users/1874w/@1874/openclaw/other"), "macbook");
+    nowMs += 121_000;
+    const idle = policy.apply(
+      opencodeIdleEvent("/Users/1874w/@1874/openclaw/other/sub"),
+      "macbook",
+    );
+    expect(idle).toEqual({
+      action: "continue",
+      cwd: "/Users/1874w/@1874/openclaw",
     });
   });
 });

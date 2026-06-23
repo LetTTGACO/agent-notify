@@ -286,9 +286,22 @@ export function createApp(options: CreateAppOptions): Hono {
       return c.json({ ok: true, notified: false });
     }
 
+    const matchingDecision =
+      incoming.agent === "claude-code"
+        ? policyDecision
+        : incoming.agent === "codex"
+          ? codexPolicyDecision
+          : opencodePolicyDecision;
+
     let formatted;
     try {
-      formatted = formatIncomingEvent(incoming, { language: options.language });
+      formatted = formatIncomingEvent(incoming, {
+        language: options.language,
+        cwd:
+          matchingDecision.action === "continue"
+            ? matchingDecision.cwd
+            : undefined,
+      });
     } catch (error) {
       trace("format_error", {
         receivedAt,
