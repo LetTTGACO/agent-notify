@@ -34,6 +34,28 @@ Codex supports these hooks:
 - `PermissionRequest`: pushes when Codex needs user permission; not pushed when `permission_mode` is `bypassPermissions`.
 - `Stop`: pushes a completion notification after the task exceeds the server completion threshold (default `120` seconds).
 
+## Manual notification switch
+
+Each tool has its own AgentNotify switch. Turning notifications off in Codex does not turn them off in OpenCode or Claude Code.
+
+Commands:
+
+- `/agent-notify off`: mute the current session for the current tool.
+- `/agent-notify on`: re-enable the current tool and clear current-session, timed, and persistent mutes.
+- `/agent-notify off 30m`: mute the current tool for 30 minutes. The units are `s`, `m`, `h`, and `d`.
+- `/agent-notify off persist`: keep the current tool muted until `/agent-notify on`.
+- `/agent-notify status`: show the current tool's switch state when the host displays command output.
+
+Switch state is stored in:
+
+```text
+~/.config/agent-notify/state/codex.json
+~/.config/agent-notify/state/claude-code.json
+~/.config/agent-notify/state/opencode.json
+```
+
+If `XDG_CONFIG_HOME` is set, the files live under `$XDG_CONFIG_HOME/agent-notify/state/` instead. Missing or broken state files are treated as enabled so a damaged mute file cannot silently block notifications forever.
+
 ## Interaction cooldown (noise reduction)
 
 When you handle several permissions or questions in a row at the computer, back-to-back notifications get noisy. AgentNotify applies a server-side cooldown to `permission` / `question` notifications:

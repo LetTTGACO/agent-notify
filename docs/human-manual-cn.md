@@ -34,6 +34,28 @@ Codex 侧支持这些 hooks：
 - `PermissionRequest`：Codex 需要用户批准权限时推送；`permission_mode` 为 `bypassPermissions` 时不推送
 - `Stop`：长任务达到服务端完成阈值（默认 `120` 秒）后推送完成通知
 
+## 手动通知开关
+
+每个工具都有自己的 AgentNotify 开关。在 Codex 里关闭通知，不会影响 OpenCode 或 Claude Code。
+
+命令：
+
+- `/agent-notify off`：静音当前工具的当前会话。
+- `/agent-notify on`：重新开启当前工具通知，并清掉当前会话、定时和持久静音。
+- `/agent-notify off 30m`：将当前工具静音 30 分钟。支持的单位是 `s`、`m`、`h`、`d`。
+- `/agent-notify off persist`：持久静音当前工具，直到执行 `/agent-notify on`。
+- `/agent-notify status`：在 host 能显示命令输出时，显示当前工具开关状态。
+
+开关状态存放在：
+
+```text
+~/.config/agent-notify/state/codex.json
+~/.config/agent-notify/state/claude-code.json
+~/.config/agent-notify/state/opencode.json
+```
+
+如果设置了 `XDG_CONFIG_HOME`，文件会放在 `$XDG_CONFIG_HOME/agent-notify/state/` 下。状态文件不存在或损坏时会按“已开启通知”处理，避免坏掉的静音文件永久阻断通知。
+
 ## 交互冷却降噪
 
 当你在电脑前连续处理多个权限或问答时，连发通知会很吵。AgentNotify 在服务端对 `permission` / `question` 类通知做冷却降噪：

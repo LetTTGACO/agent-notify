@@ -23,6 +23,7 @@ AgentNotify receives hook events from OpenCode, Claude Code, and Codex, formats 
 - Prefixes notification titles with the project name when the agent provides a working directory.
 - Keeps short tasks quiet and only pings when a session has run long enough to matter.
 - Tames rapid notify-handle-continue loops with a session-scoped cooldown for permission/question alerts.
+- Provides per-tool `/agent-notify` switches for session, timed, and persistent muting.
 - Pushes through Bark (iPhone / Apple Watch) or ntfy (cross-platform).
 
 ## Supported agents

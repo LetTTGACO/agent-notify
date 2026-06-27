@@ -204,6 +204,8 @@ If any selected agent already has AgentNotify files or hook entries, stop before
 | Codex hooks | `~/.codex/hooks.json` |
 
 > Keep the destination locations consistent with the paths used by the adapters.
+>
+> Agent-side switch state defaults to on. Do not create or edit `~/.config/agent-notify/state/*.json` during first-time install; those files are created only when the user runs `/agent-notify`.
 
 ### 2.1 OpenCode
 
