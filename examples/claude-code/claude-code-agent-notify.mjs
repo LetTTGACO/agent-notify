@@ -61,7 +61,7 @@ export function summarizeClaudeCodeEventForDebug(raw) {
   };
 }
 
-function writeDebugLog(config, raw, forwarded, sent) {
+function writeDebugLog(config, raw, forwarded, sent, extra = {}) {
   if (!config.debugLogPath) return;
 
   try {
@@ -71,6 +71,7 @@ function writeDebugLog(config, raw, forwarded, sent) {
         ts: new Date().toISOString(),
         forwarded,
         sent,
+        ...extra,
         ...summarizeClaudeCodeEventForDebug(raw),
       })}\n`,
     );
@@ -413,7 +414,7 @@ async function main() {
   }
 
   const result = await handleClaudeCodeEvent(config, raw);
-  writeDebugLog(config, raw, result.forwarded, result.sent);
+  writeDebugLog(config, raw, result.forwarded, result.sent, result.debug);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

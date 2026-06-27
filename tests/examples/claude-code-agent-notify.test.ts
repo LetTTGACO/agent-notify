@@ -1,4 +1,5 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -303,5 +304,56 @@ describe("Claude Code adapter example", () => {
     });
 
     expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("writes switch state read errors into the configured debug log during normal CLI execution", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "agent-notify-claude-cli-"));
+    const homeDir = join(tempDir, "home");
+    const configDir = join(homeDir, ".config", "agent-notify");
+    const xdgConfigDir = join(tempDir, "xdg");
+    const stateDir = join(xdgConfigDir, "agent-notify", "state");
+    const debugLogPath = join(tempDir, "claude-debug.log");
+    const statePath = join(stateDir, "claude-code.json");
+
+    mkdirSync(configDir, { recursive: true });
+    mkdirSync(stateDir, { recursive: true });
+    writeFileSync(
+      join(configDir, "claude-code.json"),
+      JSON.stringify({
+        serverUrl: "http://127.0.0.1:1",
+        token: "secret",
+        timeoutMs: 25,
+        debugLogPath,
+      }),
+      "utf8",
+    );
+    writeFileSync(statePath, "{not-json", "utf8");
+
+    execFileSync(
+      process.execPath,
+      [join(process.cwd(), "examples/claude-code/claude-code-agent-notify.mjs")],
+      {
+        cwd: process.cwd(),
+        env: {
+          ...process.env,
+          HOME: homeDir,
+          XDG_CONFIG_HOME: xdgConfigDir,
+        },
+        input: JSON.stringify({
+          hook_event_name: "Notification",
+          notification_type: "permission_prompt",
+          session_id: "claude_session_12",
+        }),
+      },
+    );
+
+    const debugLogEntry = JSON.parse(readFileSync(debugLogPath, "utf8").trim());
+    expect(debugLogEntry).toMatchObject({
+      forwarded: true,
+      sent: false,
+      hookEventName: "Notification",
+      sessionId: "claude_session_12",
+      switchStateReadError: expect.stringContaining("state-read"),
+    });
   });
 });
