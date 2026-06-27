@@ -176,7 +176,7 @@ describe("OpenCode plugin example", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("registers the supported OpenCode command hook and mutes the current session", async () => {
+  it("registers command.execute.before, mutes the current session, and clears output parts", async () => {
     const tempDir = mkdtempSync(join(tmpdir(), "agent-notify-opencode-plugin-"));
     const homeDir = join(tempDir, "home");
     const configDir = join(homeDir, ".config", "opencode");
@@ -206,17 +206,25 @@ describe("OpenCode plugin example", () => {
         directory: "/Users/1874w/@1874/agent-notify",
       });
 
-      expect(plugin).not.toHaveProperty("command.execute.before");
-      expect(plugin).toHaveProperty("tui.command.execute");
+      expect(plugin).toHaveProperty("command.execute.before");
+      expect(plugin).not.toHaveProperty("tui.command.execute");
+
+      const output = {
+        parts: [{ type: "text", text: "AgentNotify command: off" }],
+      };
 
       await expect(
-        plugin["tui.command.execute"]({
-          command: "agent-notify",
-          arguments: "off",
-          sessionID: "opencode_session_44",
-        }),
+        plugin["command.execute.before"](
+          {
+            command: "agent-notify",
+            arguments: "off",
+            sessionID: "opencode_session_44",
+          },
+          output,
+        ),
       ).resolves.toBeDefined();
 
+      expect(output.parts).toEqual([]);
       expect(JSON.parse(readFileSync(statePath, "utf8"))).toMatchObject({
         persistentDisabled: false,
         disabledSessions: {
@@ -274,7 +282,7 @@ describe("OpenCode plugin example", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
   });
 
-  it("writes switch state read errors into the configured debug log during command execution", async () => {
+  it("writes switch state read errors into the configured debug log during command.execute.before", async () => {
     const tempDir = mkdtempSync(join(tmpdir(), "agent-notify-opencode-debug-"));
     const homeDir = join(tempDir, "home");
     const configDir = join(homeDir, ".config", "opencode");
@@ -307,15 +315,23 @@ describe("OpenCode plugin example", () => {
         directory: "/Users/1874w/@1874/agent-notify",
       });
 
-      await plugin["tui.command.execute"]({
-        command: "agent-notify",
-        arguments: "status",
-        sessionId: "opencode_session_55",
-      });
+      const output = {
+        parts: [{ type: "text", text: "AgentNotify command: status" }],
+      };
+
+      await plugin["command.execute.before"](
+        {
+          command: "agent-notify",
+          arguments: "status",
+          sessionId: "opencode_session_55",
+        },
+        output,
+      );
 
       expect(JSON.parse(readFileSync(debugLogPath, "utf8").trim())).toMatchObject({
         switchStateReadError: expect.stringContaining("state-read"),
       });
+      expect(output.parts).toEqual([]);
     } finally {
       if (previousHome === undefined) {
         delete process.env.HOME;

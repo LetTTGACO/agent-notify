@@ -362,6 +362,59 @@ function readAgentNotifyConfig(): AgentNotifyConfig {
   return parseAgentNotifyConfig(raw);
 }
 
+async function handleOpenCodeCommand(
+  config: AgentNotifyConfig,
+  input: {
+    command?: string;
+    arguments?: string | string[];
+    sessionID?: string;
+    sessionId?: string;
+    properties?: Record<string, unknown>;
+  },
+  output?: { parts?: unknown[] },
+): Promise<{ message: string } | undefined> {
+  if (getOpenCodeCommandName(input) !== "agent-notify") return undefined;
+
+  const now = new Date();
+  const command = parseAgentNotifyCommand(
+    `/agent-notify ${getOpenCodeCommandArguments(input) ?? ""}`.trim(),
+    now,
+  );
+  const statePath = getOpenCodeSwitchStatePath();
+  let state: AgentNotifySwitchState;
+  let debug: { switchStateReadError: string } | undefined;
+  try {
+    state = readOpenCodeSwitchState(statePath);
+    if (typeof state.readError === "string") {
+      debug = { switchStateReadError: state.readError };
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    state = emptySwitchState();
+    debug = { switchStateReadError: `state-read: ${message}` };
+  }
+
+  const sessionId = getOpenCodeSessionId(input);
+  const result =
+    command.type === "status"
+      ? {
+          state,
+          message: getOpenCodeStatusMessage(state, sessionId, now),
+        }
+      : applyOpenCodeSwitchCommand(state, command, sessionId, now);
+
+  if (command.type !== "status" && command.type !== "invalid") {
+    writeOpenCodeSwitchState(statePath, result.state);
+  }
+  if (debug) {
+    writeDebugLog(config, input, false, false, debug);
+  }
+  if (output) {
+    output.parts = [];
+  }
+  return { message: result.message };
+}
+
 export async function notify(
   config: AgentNotifyConfig,
   raw: unknown,
@@ -430,7 +483,7 @@ export const AgentNotifyPlugin = async ({
         template: "AgentNotify command: $ARGUMENTS",
       };
     },
-    "tui.command.execute": async (
+    "command.execute.before": async (
       input: {
         command?: string;
         arguments?: string | string[];
@@ -438,41 +491,9 @@ export const AgentNotifyPlugin = async ({
         sessionId?: string;
         properties?: Record<string, unknown>;
       },
+      output: { parts: unknown[] },
     ) => {
-      if (getOpenCodeCommandName(input) !== "agent-notify") return;
-      const now = new Date();
-      const command = parseAgentNotifyCommand(
-        `/agent-notify ${getOpenCodeCommandArguments(input) ?? ""}`.trim(),
-        now,
-      );
-      const statePath = getOpenCodeSwitchStatePath();
-      let state: AgentNotifySwitchState;
-      let debug: { switchStateReadError: string } | undefined;
-      try {
-        state = readOpenCodeSwitchState(statePath);
-        if (typeof state.readError === "string") {
-          debug = { switchStateReadError: state.readError };
-        }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        state = emptySwitchState();
-        debug = { switchStateReadError: `state-read: ${message}` };
-      }
-      const sessionId = getOpenCodeSessionId(input);
-      const result =
-        command.type === "status"
-          ? {
-              state,
-              message: getOpenCodeStatusMessage(state, sessionId, now),
-            }
-          : applyOpenCodeSwitchCommand(state, command, sessionId, now);
-      if (command.type !== "status" && command.type !== "invalid") {
-        writeOpenCodeSwitchState(statePath, result.state);
-      }
-      if (debug) {
-        writeDebugLog(config, input, false, false, debug);
-      }
-      return { message: result.message };
+      return handleOpenCodeCommand(config, input, output);
     },
     event: async ({ event }: { event: { type: string; [key: string]: unknown } }) => {
       await notify(config, event, directory);
