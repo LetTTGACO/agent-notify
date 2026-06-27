@@ -1,12 +1,50 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   addOpenCodeCwd,
+  getOpenCodeMuteReason,
+  getOpenCodeSessionId,
+  notify,
+  parseAgentNotifyCommand,
   parseAgentNotifyConfig,
   shouldNotify,
   summarizeOpenCodeEventForDebug,
 } from "../../examples/opencode/agent-notify.js";
 
 describe("OpenCode plugin example", () => {
+  it("parses AgentNotify commands for OpenCode", () => {
+    const now = new Date("2026-06-28T08:00:00.000Z");
+
+    expect(parseAgentNotifyCommand("/agent-notify on", now)).toEqual({
+      type: "on",
+    });
+    expect(parseAgentNotifyCommand("/agent-notify status", now)).toEqual({
+      type: "status",
+    });
+    expect(parseAgentNotifyCommand("/agent-notify off", now)).toEqual({
+      type: "off-session",
+    });
+    expect(parseAgentNotifyCommand("/agent-notify off persist", now)).toEqual({
+      type: "off-persist",
+    });
+    expect(parseAgentNotifyCommand("/agent-notify off 1d", now)).toEqual({
+      type: "off-until",
+      until: "2026-06-29T08:00:00.000Z",
+    });
+  });
+
+  it("extracts OpenCode session ids from top-level and properties fields", () => {
+    expect(getOpenCodeSessionId({ sessionID: "top_session" })).toBe("top_session");
+    expect(getOpenCodeSessionId({ sessionId: "camel_session" })).toBe(
+      "camel_session",
+    );
+    expect(
+      getOpenCodeSessionId({
+        properties: { sessionID: "property_session" },
+      }),
+    ).toBe("property_session");
+    expect(getOpenCodeSessionId({ properties: {} })).toBeUndefined();
+  });
+
   it("defaults timeoutMs to 2000 when not configured", () => {
     const config = parseAgentNotifyConfig({
       serverUrl: "http://127.0.0.1:8787",
@@ -99,5 +137,38 @@ describe("OpenCode plugin example", () => {
     expect(addOpenCodeCwd("not-an-object", "/Users/1874w/project")).toBe(
       "not-an-object",
     );
+  });
+
+  it("does not send OpenCode events while the current session is muted", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+    const readState = vi.fn().mockReturnValue({
+      persistentDisabled: false,
+      disabledSessions: {
+        opencode_session_5: { disabledAt: "2026-06-28T08:00:00.000Z" },
+      },
+    });
+
+    await expect(
+      notify(
+        {
+          serverUrl: "http://127.0.0.1:8787",
+          token: "secret",
+          timeoutMs: 2_000,
+        },
+        {
+          type: "permission.asked",
+          properties: { sessionID: "opencode_session_5" },
+        },
+        "/Users/1874w/@1874/agent-notify",
+        {
+          fetchImpl: fetchMock,
+          now: new Date("2026-06-28T08:01:00.000Z"),
+          statePath: "/tmp/agent-notify-opencode-muted.json",
+          readState,
+        },
+      ),
+    ).resolves.toEqual({ forwarded: true, sent: false, muted: "session" });
+
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
