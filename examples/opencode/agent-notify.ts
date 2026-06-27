@@ -32,6 +32,7 @@ interface AgentNotifySwitchState {
   persistentDisabled: boolean;
   temporaryDisabledUntil?: string;
   disabledSessions: Record<string, { disabledAt: string }>;
+  readError?: string;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -52,6 +53,13 @@ const DURATION_RE = /^(\d+)([smhd])$/;
 
 function emptySwitchState(): AgentNotifySwitchState {
   return { persistentDisabled: false, disabledSessions: {} };
+}
+
+function withSwitchStateReadError(message: string): AgentNotifySwitchState {
+  return {
+    ...emptySwitchState(),
+    readError: `state-read: ${message}`,
+  };
 }
 
 function addDuration(now: Date, amount: number, unit: string): Date {
@@ -149,6 +157,8 @@ function writeDebugLog(
   config: AgentNotifyConfig,
   raw: unknown,
   forwarded: boolean,
+  sent: boolean,
+  extra: Record<string, unknown> = {},
 ): void {
   if (!config.debugLogPath) return;
 
@@ -158,7 +168,9 @@ function writeDebugLog(
       `${JSON.stringify({
         ts: new Date().toISOString(),
         forwarded,
+        sent,
         ...summarizeOpenCodeEventForDebug(raw),
+        ...extra,
       })}\n`,
     );
   } catch {
@@ -182,8 +194,9 @@ export function readOpenCodeSwitchState(
         ? (raw.disabledSessions as Record<string, { disabledAt: string }>)
         : {},
     };
-  } catch {
-    return emptySwitchState();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return withSwitchStateReadError(message);
   }
 }
 
@@ -244,6 +257,38 @@ export function getOpenCodeMuteReason(
     if (Number.isFinite(untilMs) && untilMs > now.getTime()) return "timed";
   }
   if (sessionId && state.disabledSessions[sessionId]) return "session";
+  return undefined;
+}
+
+function getOpenCodeStatusMessage(
+  state: AgentNotifySwitchState,
+  sessionId: string | undefined,
+  now = new Date(),
+): string {
+  const muted = getOpenCodeMuteReason(state, sessionId, now);
+  if (muted === "persistent") {
+    return "AgentNotify is persistently muted for OpenCode.";
+  }
+  if (muted === "timed") {
+    return `AgentNotify is muted for OpenCode until ${state.temporaryDisabledUntil}.`;
+  }
+  if (muted === "session") {
+    return "AgentNotify is muted for this OpenCode session.";
+  }
+  return "AgentNotify is on for OpenCode.";
+}
+
+function getOpenCodeCommandName(raw: unknown): string | undefined {
+  if (!isRecord(raw)) return undefined;
+  return typeof raw.command === "string" ? raw.command : undefined;
+}
+
+function getOpenCodeCommandArguments(raw: unknown): string | undefined {
+  if (!isRecord(raw)) return undefined;
+  if (typeof raw.arguments === "string") return raw.arguments;
+  if (Array.isArray(raw.arguments)) {
+    return raw.arguments.filter((value): value is string => typeof value === "string").join(" ");
+  }
   return undefined;
 }
 
@@ -331,21 +376,29 @@ export async function notify(
   const rawWithCwd = addOpenCodeCwd(raw, directory);
   const forwarded = shouldNotify(rawWithCwd);
   if (!forwarded) {
-    writeDebugLog(config, rawWithCwd, false);
+    writeDebugLog(config, rawWithCwd, false, false);
     return { forwarded: false, sent: false };
   }
 
   const now = deps.now ?? new Date();
   const statePath = deps.statePath ?? getOpenCodeSwitchStatePath();
   const readState = deps.readState ?? readOpenCodeSwitchState;
-  const muted = getOpenCodeMuteReason(
-    readState(statePath),
-    getOpenCodeSessionId(rawWithCwd),
-    now,
-  );
+  let state: AgentNotifySwitchState;
+  let debug: { switchStateReadError: string } | undefined;
+  try {
+    state = readState(statePath);
+    if (typeof state.readError === "string") {
+      debug = { switchStateReadError: state.readError };
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    state = emptySwitchState();
+    debug = { switchStateReadError: `state-read: ${message}` };
+  }
+  const muted = getOpenCodeMuteReason(state, getOpenCodeSessionId(rawWithCwd), now);
   if (muted) {
-    writeDebugLog(config, rawWithCwd, false);
-    return { forwarded: true, sent: false, muted };
+    writeDebugLog(config, rawWithCwd, true, false, debug);
+    return { forwarded: true, sent: false, muted, ...(debug ? { debug } : {}) };
   }
 
   const sent = await sendOpenCodeEvent(
@@ -355,8 +408,8 @@ export async function notify(
     rawWithCwd,
     deps.fetchImpl ?? fetch,
   );
-  writeDebugLog(config, rawWithCwd, forwarded);
-  return { forwarded, sent };
+  writeDebugLog(config, rawWithCwd, forwarded, sent, debug);
+  return { forwarded, sent, ...(debug ? { debug } : {}) };
 }
 
 // OpenCode plugin: use the unified `event` hook so we receive the real event
@@ -377,19 +430,49 @@ export const AgentNotifyPlugin = async ({
         template: "AgentNotify command: $ARGUMENTS",
       };
     },
-    "command.execute.before": async (input: { command?: string; arguments?: string }) => {
-      if (input.command !== "agent-notify") return;
+    "tui.command.execute": async (
+      input: {
+        command?: string;
+        arguments?: string | string[];
+        sessionID?: string;
+        sessionId?: string;
+        properties?: Record<string, unknown>;
+      },
+    ) => {
+      if (getOpenCodeCommandName(input) !== "agent-notify") return;
       const now = new Date();
       const command = parseAgentNotifyCommand(
-        `/agent-notify ${input.arguments ?? ""}`.trim(),
+        `/agent-notify ${getOpenCodeCommandArguments(input) ?? ""}`.trim(),
         now,
       );
       const statePath = getOpenCodeSwitchStatePath();
-      const state = readOpenCodeSwitchState(statePath);
-      const result = applyOpenCodeSwitchCommand(state, command, undefined, now);
+      let state: AgentNotifySwitchState;
+      let debug: { switchStateReadError: string } | undefined;
+      try {
+        state = readOpenCodeSwitchState(statePath);
+        if (typeof state.readError === "string") {
+          debug = { switchStateReadError: state.readError };
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        state = emptySwitchState();
+        debug = { switchStateReadError: `state-read: ${message}` };
+      }
+      const sessionId = getOpenCodeSessionId(input);
+      const result =
+        command.type === "status"
+          ? {
+              state,
+              message: getOpenCodeStatusMessage(state, sessionId, now),
+            }
+          : applyOpenCodeSwitchCommand(state, command, sessionId, now);
       if (command.type !== "status" && command.type !== "invalid") {
         writeOpenCodeSwitchState(statePath, result.state);
       }
+      if (debug) {
+        writeDebugLog(config, input, false, false, debug);
+      }
+      return { message: result.message };
     },
     event: async ({ event }: { event: { type: string; [key: string]: unknown } }) => {
       await notify(config, event, directory);

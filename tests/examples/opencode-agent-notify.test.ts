@@ -1,5 +1,9 @@
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import {
+  AgentNotifyPlugin,
   addOpenCodeCwd,
   getOpenCodeMuteReason,
   getOpenCodeSessionId,
@@ -170,5 +174,159 @@ describe("OpenCode plugin example", () => {
     ).resolves.toEqual({ forwarded: true, sent: false, muted: "session" });
 
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("registers the supported OpenCode command hook and mutes the current session", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "agent-notify-opencode-plugin-"));
+    const homeDir = join(tempDir, "home");
+    const configDir = join(homeDir, ".config", "opencode");
+    const xdgConfigDir = join(tempDir, "xdg");
+    const stateDir = join(xdgConfigDir, "agent-notify", "state");
+    const statePath = join(stateDir, "opencode.json");
+
+    mkdirSync(configDir, { recursive: true });
+    mkdirSync(stateDir, { recursive: true });
+    writeFileSync(
+      join(configDir, "agent-notify.json"),
+      JSON.stringify({
+        serverUrl: "http://127.0.0.1:8787",
+        token: "secret",
+        timeoutMs: 2_000,
+      }),
+      "utf8",
+    );
+
+    const previousHome = process.env.HOME;
+    const previousXdgConfigHome = process.env.XDG_CONFIG_HOME;
+    process.env.HOME = homeDir;
+    process.env.XDG_CONFIG_HOME = xdgConfigDir;
+
+    try {
+      const plugin = await AgentNotifyPlugin({
+        directory: "/Users/1874w/@1874/agent-notify",
+      });
+
+      expect(plugin).not.toHaveProperty("command.execute.before");
+      expect(plugin).toHaveProperty("tui.command.execute");
+
+      await expect(
+        plugin["tui.command.execute"]({
+          command: "agent-notify",
+          arguments: "off",
+          sessionID: "opencode_session_44",
+        }),
+      ).resolves.toBeDefined();
+
+      expect(JSON.parse(readFileSync(statePath, "utf8"))).toMatchObject({
+        persistentDisabled: false,
+        disabledSessions: {
+          opencode_session_44: {
+            disabledAt: expect.any(String),
+          },
+        },
+      });
+    } finally {
+      if (previousHome === undefined) {
+        delete process.env.HOME;
+      } else {
+        process.env.HOME = previousHome;
+      }
+      if (previousXdgConfigHome === undefined) {
+        delete process.env.XDG_CONFIG_HOME;
+      } else {
+        process.env.XDG_CONFIG_HOME = previousXdgConfigHome;
+      }
+    }
+  });
+
+  it("forwards OpenCode events when the switch state file is malformed and surfaces debug info", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "agent-notify-opencode-bad-state-"));
+    const statePath = join(tempDir, "opencode.json");
+    writeFileSync(statePath, "{not-json", "utf8");
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+
+    await expect(
+      notify(
+        {
+          serverUrl: "http://127.0.0.1:8787",
+          token: "secret",
+          timeoutMs: 2_000,
+        },
+        {
+          type: "permission.asked",
+          properties: { sessionID: "opencode_session_11" },
+        },
+        "/Users/1874w/@1874/agent-notify",
+        {
+          fetchImpl: fetchMock,
+          now: new Date("2026-06-28T08:01:00.000Z"),
+          statePath,
+        },
+      ),
+    ).resolves.toEqual({
+      forwarded: true,
+      sent: true,
+      debug: expect.objectContaining({
+        switchStateReadError: expect.stringContaining("state-read"),
+      }),
+    });
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("writes switch state read errors into the configured debug log during command execution", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "agent-notify-opencode-debug-"));
+    const homeDir = join(tempDir, "home");
+    const configDir = join(homeDir, ".config", "opencode");
+    const xdgConfigDir = join(tempDir, "xdg");
+    const stateDir = join(xdgConfigDir, "agent-notify", "state");
+    const statePath = join(stateDir, "opencode.json");
+    const debugLogPath = join(tempDir, "opencode-debug.log");
+
+    mkdirSync(configDir, { recursive: true });
+    mkdirSync(stateDir, { recursive: true });
+    writeFileSync(
+      join(configDir, "agent-notify.json"),
+      JSON.stringify({
+        serverUrl: "http://127.0.0.1:8787",
+        token: "secret",
+        timeoutMs: 2_000,
+        debugLogPath,
+      }),
+      "utf8",
+    );
+    writeFileSync(statePath, "{not-json", "utf8");
+
+    const previousHome = process.env.HOME;
+    const previousXdgConfigHome = process.env.XDG_CONFIG_HOME;
+    process.env.HOME = homeDir;
+    process.env.XDG_CONFIG_HOME = xdgConfigDir;
+
+    try {
+      const plugin = await AgentNotifyPlugin({
+        directory: "/Users/1874w/@1874/agent-notify",
+      });
+
+      await plugin["tui.command.execute"]({
+        command: "agent-notify",
+        arguments: "status",
+        sessionId: "opencode_session_55",
+      });
+
+      expect(JSON.parse(readFileSync(debugLogPath, "utf8").trim())).toMatchObject({
+        switchStateReadError: expect.stringContaining("state-read"),
+      });
+    } finally {
+      if (previousHome === undefined) {
+        delete process.env.HOME;
+      } else {
+        process.env.HOME = previousHome;
+      }
+      if (previousXdgConfigHome === undefined) {
+        delete process.env.XDG_CONFIG_HOME;
+      } else {
+        process.env.XDG_CONFIG_HOME = previousXdgConfigHome;
+      }
+    }
   });
 });
