@@ -80,6 +80,22 @@ function readDisabledSessions(
   return disabledSessions;
 }
 
+function readOptionalBoolean(value: unknown, key: string): boolean | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "boolean") {
+    throw new Error(`invalid ${key}`);
+  }
+  return value;
+}
+
+function readOptionalStateString(value: unknown, key: string): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string") {
+    throw new Error(`invalid ${key}`);
+  }
+  return value;
+}
+
 function addDuration(now: Date, amount: number, unit: string): Date {
   const multipliers: Record<string, number> = {
     s: 1_000,
@@ -201,13 +217,16 @@ export function readOpenCodeSwitchState(
 ): AgentNotifySwitchState {
   try {
     if (!existsSync(statePath)) return emptySwitchState();
-    const raw = JSON.parse(readFileSync(statePath, "utf8")) as Record<string, unknown>;
+    const raw = JSON.parse(readFileSync(statePath, "utf8"));
+    if (!isRecord(raw)) {
+      throw new Error("invalid state root");
+    }
     return {
-      persistentDisabled: raw.persistentDisabled === true,
-      temporaryDisabledUntil:
-        typeof raw.temporaryDisabledUntil === "string"
-          ? raw.temporaryDisabledUntil
-          : undefined,
+      persistentDisabled: readOptionalBoolean(raw.persistentDisabled, "persistentDisabled") ?? false,
+      temporaryDisabledUntil: readOptionalStateString(
+        raw.temporaryDisabledUntil,
+        "temporaryDisabledUntil",
+      ),
       disabledSessions: readDisabledSessions(raw.disabledSessions),
     };
   } catch (error) {

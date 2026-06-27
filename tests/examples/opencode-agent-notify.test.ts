@@ -325,6 +325,83 @@ describe("OpenCode plugin example", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
   });
 
+  it("does not mute from a parseable non-object switch state root and surfaces debug info", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "agent-notify-opencode-bad-root-"));
+    const statePath = join(tempDir, "opencode.json");
+    writeFileSync(statePath, JSON.stringify("enabled"), "utf8");
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+
+    await expect(
+      notify(
+        {
+          serverUrl: "http://127.0.0.1:8787",
+          token: "secret",
+          timeoutMs: 2_000,
+        },
+        {
+          type: "permission.asked",
+          properties: { sessionID: "opencode_session_12" },
+        },
+        "/Users/1874w/@1874/agent-notify",
+        {
+          fetchImpl: fetchMock,
+          now: new Date("2026-06-28T08:01:00.000Z"),
+          statePath,
+        },
+      ),
+    ).resolves.toEqual({
+      forwarded: true,
+      sent: true,
+      debug: expect.objectContaining({
+        switchStateReadError: expect.stringContaining("state-read"),
+      }),
+    });
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("does not mute from parseable but malformed switch state fields and surfaces debug info", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "agent-notify-opencode-bad-fields-"));
+    const statePath = join(tempDir, "opencode.json");
+    writeFileSync(
+      statePath,
+      JSON.stringify({
+        persistentDisabled: "yes",
+        temporaryDisabledUntil: 123,
+      }),
+      "utf8",
+    );
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+
+    await expect(
+      notify(
+        {
+          serverUrl: "http://127.0.0.1:8787",
+          token: "secret",
+          timeoutMs: 2_000,
+        },
+        {
+          type: "permission.asked",
+          properties: { sessionID: "opencode_session_13" },
+        },
+        "/Users/1874w/@1874/agent-notify",
+        {
+          fetchImpl: fetchMock,
+          now: new Date("2026-06-28T08:01:00.000Z"),
+          statePath,
+        },
+      ),
+    ).resolves.toEqual({
+      forwarded: true,
+      sent: true,
+      debug: expect.objectContaining({
+        switchStateReadError: expect.stringContaining("state-read"),
+      }),
+    });
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
   it("writes switch state read errors into the configured debug log during command.execute.before", async () => {
     const tempDir = mkdtempSync(join(tmpdir(), "agent-notify-opencode-debug-"));
     const homeDir = join(tempDir, "home");
