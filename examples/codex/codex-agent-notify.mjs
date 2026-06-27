@@ -157,6 +157,38 @@ function withSwitchStateReadError(message) {
   };
 }
 
+function readDisabledSessions(value) {
+  if (value === undefined) return {};
+  if (!isRecord(value)) {
+    throw new Error("invalid disabledSessions");
+  }
+
+  const disabledSessions = {};
+  for (const [sessionId, sessionState] of Object.entries(value)) {
+    if (!isRecord(sessionState) || typeof sessionState.disabledAt !== "string") {
+      throw new Error(`invalid disabledSessions.${sessionId}`);
+    }
+    disabledSessions[sessionId] = { disabledAt: sessionState.disabledAt };
+  }
+  return disabledSessions;
+}
+
+function readOptionalBoolean(value, key) {
+  if (value === undefined) return undefined;
+  if (typeof value !== "boolean") {
+    throw new Error(`invalid ${key}`);
+  }
+  return value;
+}
+
+function readOptionalStateString(value, key) {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string") {
+    throw new Error(`invalid ${key}`);
+  }
+  return value;
+}
+
 function addDuration(now, amount, unit) {
   const multipliers = { s: 1_000, m: 60_000, h: 3_600_000, d: 86_400_000 };
   return new Date(now.getTime() + amount * multipliers[unit]);
@@ -205,13 +237,17 @@ export function readCodexSwitchState(statePath) {
   try {
     if (!existsSync(statePath)) return emptySwitchState();
     const raw = JSON.parse(readFileSync(statePath, "utf8"));
+    if (!isRecord(raw)) {
+      throw new Error("invalid state root");
+    }
     return {
-      persistentDisabled: raw.persistentDisabled === true,
-      temporaryDisabledUntil:
-        typeof raw.temporaryDisabledUntil === "string"
-          ? raw.temporaryDisabledUntil
-          : undefined,
-      disabledSessions: isRecord(raw.disabledSessions) ? raw.disabledSessions : {},
+      persistentDisabled:
+        readOptionalBoolean(raw.persistentDisabled, "persistentDisabled") ?? false,
+      temporaryDisabledUntil: readOptionalStateString(
+        raw.temporaryDisabledUntil,
+        "temporaryDisabledUntil",
+      ),
+      disabledSessions: readDisabledSessions(raw.disabledSessions),
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

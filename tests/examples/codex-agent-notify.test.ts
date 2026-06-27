@@ -325,6 +325,62 @@ describe("Codex adapter example", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
   });
 
+  it("treats parseable malformed Codex disabledSessions as enabled and surfaces debug info", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "agent-notify-codex-"));
+    const statePath = join(tempDir, "codex.json");
+    writeFileSync(
+      statePath,
+      JSON.stringify({
+        persistentDisabled: false,
+        disabledSessions: {
+          codex_session_13: true,
+        },
+      }),
+      "utf8",
+    );
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+
+    await expect(
+      adapter.handleCodexEvent(
+        {
+          serverUrl: "http://127.0.0.1:8787",
+          token: "secret",
+          timeoutMs: 2_000,
+        },
+        {
+          hook_event_name: "PermissionRequest",
+          session_id: "codex_session_13",
+          tool_name: "Bash",
+        },
+        {
+          fetchImpl: fetchMock,
+          now: new Date("2026-06-28T08:01:00.000Z"),
+          statePath,
+        },
+      ),
+    ).resolves.toEqual({
+      forwarded: true,
+      sent: true,
+      debug: expect.objectContaining({
+        switchStateReadError: "state-read: invalid disabledSessions.codex_session_13",
+      }),
+    });
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("treats parseable malformed Codex state roots as enabled with a read error", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "agent-notify-codex-"));
+    const statePath = join(tempDir, "codex.json");
+    writeFileSync(statePath, JSON.stringify([]), "utf8");
+
+    expect(adapter.readCodexSwitchState(statePath)).toEqual({
+      persistentDisabled: false,
+      disabledSessions: {},
+      readError: "state-read: invalid state root",
+    });
+  });
+
   it("forwards Codex events when reading switch state throws and surfaces debug info", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
     const readState = vi.fn(() => {

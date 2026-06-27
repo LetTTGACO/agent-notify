@@ -306,6 +306,62 @@ describe("Claude Code adapter example", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
   });
 
+  it("treats parseable malformed Claude Code disabledSessions as enabled and surfaces debug info", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "agent-notify-claude-"));
+    const statePath = join(tempDir, "claude-code.json");
+    writeFileSync(
+      statePath,
+      JSON.stringify({
+        persistentDisabled: false,
+        disabledSessions: {
+          claude_session_13: true,
+        },
+      }),
+      "utf8",
+    );
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+
+    await expect(
+      adapter.handleClaudeCodeEvent(
+        {
+          serverUrl: "http://127.0.0.1:8787",
+          token: "secret",
+          timeoutMs: 2_000,
+        },
+        {
+          hook_event_name: "Notification",
+          notification_type: "permission_prompt",
+          session_id: "claude_session_13",
+        },
+        {
+          fetchImpl: fetchMock,
+          now: new Date("2026-06-28T08:01:00.000Z"),
+          statePath,
+        },
+      ),
+    ).resolves.toEqual({
+      forwarded: true,
+      sent: true,
+      debug: expect.objectContaining({
+        switchStateReadError: "state-read: invalid disabledSessions.claude_session_13",
+      }),
+    });
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("treats parseable malformed Claude Code state roots as enabled with a read error", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "agent-notify-claude-"));
+    const statePath = join(tempDir, "claude-code.json");
+    writeFileSync(statePath, JSON.stringify([]), "utf8");
+
+    expect(adapter.readClaudeCodeSwitchState(statePath)).toEqual({
+      persistentDisabled: false,
+      disabledSessions: {},
+      readError: "state-read: invalid state root",
+    });
+  });
+
   it("writes switch state read errors into the configured debug log during normal CLI execution", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "agent-notify-claude-cli-"));
     const homeDir = join(tempDir, "home");
