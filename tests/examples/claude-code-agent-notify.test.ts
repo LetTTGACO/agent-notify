@@ -1,3 +1,6 @@
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 const adapter = await import("../../examples/claude-code/claude-code-agent-notify.mjs");
@@ -72,6 +75,72 @@ describe("Claude Code adapter example", () => {
     expect(config.timeoutMs).toBe(5_000);
   });
 
+  it("parses AgentNotify commands for Claude Code", () => {
+    const now = new Date("2026-06-28T08:00:00.000Z");
+
+    expect(adapter.parseAgentNotifyCommand("/agent-notify on", now)).toEqual({
+      type: "on",
+    });
+    expect(adapter.parseAgentNotifyCommand("/agent-notify status", now)).toEqual({
+      type: "status",
+    });
+    expect(adapter.parseAgentNotifyCommand("/agent-notify off", now)).toEqual({
+      type: "off-session",
+    });
+    expect(
+      adapter.parseAgentNotifyCommand("/agent-notify off persist", now),
+    ).toEqual({
+      type: "off-persist",
+    });
+    expect(adapter.parseAgentNotifyCommand("/agent-notify off 2h", now)).toEqual({
+      type: "off-until",
+      until: "2026-06-28T10:00:00.000Z",
+    });
+    expect(
+      adapter.parseAgentNotifyCommand("/agent-notify off forever", now).type,
+    ).toBe("invalid");
+    expect(adapter.parseAgentNotifyCommand("normal prompt", now)).toEqual({
+      type: "none",
+    });
+  });
+
+  it("evaluates Claude Code switch state by precedence", () => {
+    const now = new Date("2026-06-28T08:00:00.000Z");
+
+    expect(
+      adapter.getClaudeCodeMuteReason(
+        { persistentDisabled: true, disabledSessions: {} },
+        "claude_session_1",
+        now,
+      ),
+    ).toBe("persistent");
+
+    expect(
+      adapter.getClaudeCodeMuteReason(
+        {
+          persistentDisabled: false,
+          temporaryDisabledUntil: "2026-06-28T08:05:00.000Z",
+          disabledSessions: {},
+        },
+        "claude_session_1",
+        now,
+      ),
+    ).toBe("timed");
+
+    expect(
+      adapter.getClaudeCodeMuteReason(
+        {
+          persistentDisabled: false,
+          disabledSessions: {
+            claude_session_1: { disabledAt: "2026-06-28T07:55:00.000Z" },
+          },
+        },
+        "claude_session_1",
+        now,
+      ),
+    ).toBe("session");
+  });
+
   it("posts forwarded events to the existing /events endpoint", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
 
@@ -122,5 +191,117 @@ describe("Claude Code adapter example", () => {
         fetchMock,
       ),
     ).resolves.toBe(false);
+  });
+
+  it("does not send Claude Code events while the current session is muted", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+    const statePath = "/tmp/agent-notify-claude-muted.json";
+    const readState = vi.fn().mockReturnValue({
+      persistentDisabled: false,
+      disabledSessions: {
+        claude_session_5: { disabledAt: "2026-06-28T08:00:00.000Z" },
+      },
+    });
+    const writeState = vi.fn();
+
+    await expect(
+      adapter.handleClaudeCodeEvent(
+        {
+          serverUrl: "http://127.0.0.1:8787",
+          token: "secret",
+          timeoutMs: 2_000,
+        },
+        {
+          hook_event_name: "Notification",
+          notification_type: "permission_prompt",
+          session_id: "claude_session_5",
+        },
+        {
+          fetchImpl: fetchMock,
+          now: new Date("2026-06-28T08:01:00.000Z"),
+          statePath,
+          readState,
+          writeState,
+        },
+      ),
+    ).resolves.toEqual({ forwarded: true, sent: false, muted: "session" });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("executes /agent-notify status through handleClaudeCodeEvent", async () => {
+    const statePath = "/tmp/agent-notify-claude-status.json";
+    const readState = vi.fn().mockReturnValue({
+      persistentDisabled: true,
+      disabledSessions: {},
+    });
+    const writeState = vi.fn();
+    const fetchMock = vi.fn();
+
+    await expect(
+      adapter.handleClaudeCodeEvent(
+        {
+          serverUrl: "http://127.0.0.1:8787",
+          token: "secret",
+          timeoutMs: 2_000,
+        },
+        {
+          hook_event_name: "UserPromptSubmit",
+          session_id: "claude_session_9",
+          prompt: "/agent-notify status",
+        },
+        {
+          fetchImpl: fetchMock,
+          now: new Date("2026-06-28T08:01:00.000Z"),
+          statePath,
+          readState,
+          writeState,
+        },
+      ),
+    ).resolves.toEqual({
+      forwarded: false,
+      sent: false,
+      command: "status",
+      message: "AgentNotify is persistently muted for Claude Code.",
+    });
+
+    expect(readState).toHaveBeenCalledWith(statePath);
+    expect(writeState).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("forwards Claude Code events when the switch state file is malformed and surfaces debug info", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "agent-notify-claude-"));
+    const statePath = join(tempDir, "claude-code.json");
+    writeFileSync(statePath, "{not-json", "utf8");
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+
+    await expect(
+      adapter.handleClaudeCodeEvent(
+        {
+          serverUrl: "http://127.0.0.1:8787",
+          token: "secret",
+          timeoutMs: 2_000,
+        },
+        {
+          hook_event_name: "Notification",
+          notification_type: "permission_prompt",
+          session_id: "claude_session_11",
+        },
+        {
+          fetchImpl: fetchMock,
+          now: new Date("2026-06-28T08:01:00.000Z"),
+          statePath,
+        },
+      ),
+    ).resolves.toEqual({
+      forwarded: true,
+      sent: true,
+      debug: expect.objectContaining({
+        switchStateReadError: expect.stringContaining("state-read"),
+      }),
+    });
+
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
 });
