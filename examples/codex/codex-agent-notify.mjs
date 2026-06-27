@@ -68,7 +68,7 @@ export function summarizeCodexEventForDebug(raw) {
   };
 }
 
-function writeDebugLog(config, raw, forwarded, sent) {
+function writeDebugLog(config, raw, forwarded, sent, extra = {}) {
   if (!config.debugLogPath) return;
 
   try {
@@ -78,6 +78,7 @@ function writeDebugLog(config, raw, forwarded, sent) {
         ts: new Date().toISOString(),
         forwarded,
         sent,
+        ...extra,
         ...summarizeCodexEventForDebug(raw),
       })}\n`,
     );
@@ -149,6 +150,13 @@ function emptySwitchState() {
   };
 }
 
+function withSwitchStateReadError(message) {
+  return {
+    ...emptySwitchState(),
+    readError: `state-read: ${message}`,
+  };
+}
+
 function addDuration(now, amount, unit) {
   const multipliers = { s: 1_000, m: 60_000, h: 3_600_000, d: 86_400_000 };
   return new Date(now.getTime() + amount * multipliers[unit]);
@@ -205,8 +213,9 @@ export function readCodexSwitchState(statePath) {
           : undefined,
       disabledSessions: isRecord(raw.disabledSessions) ? raw.disabledSessions : {},
     };
-  } catch {
-    return emptySwitchState();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return withSwitchStateReadError(message);
   }
 }
 
@@ -282,6 +291,20 @@ export function getCodexMuteReason(state, sessionId, now = new Date()) {
   return undefined;
 }
 
+function getCodexStatusMessage(state, sessionId, now = new Date()) {
+  const muted = getCodexMuteReason(state, sessionId, now);
+  if (muted === "persistent") {
+    return "AgentNotify is persistently muted for Codex.";
+  }
+  if (muted === "timed") {
+    return `AgentNotify is muted for Codex until ${state.temporaryDisabledUntil}.`;
+  }
+  if (muted === "session") {
+    return "AgentNotify is muted for this Codex session.";
+  }
+  return "AgentNotify is on for Codex.";
+}
+
 export function parseCodexConfig(raw) {
   return {
     serverUrl: readRequiredString(raw, "serverUrl"),
@@ -317,12 +340,32 @@ export async function handleCodexEvent(config, raw, deps = {}) {
   const writeState = deps.writeState ?? writeCodexSwitchState;
   const fetchImpl = deps.fetchImpl ?? fetch;
   const sessionId = getSessionId(raw);
-  const state = readState(statePath);
+  let state;
+  let debug;
+  try {
+    state = readState(statePath);
+    if (typeof state?.readError === "string") {
+      debug = { switchStateReadError: state.readError };
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    state = emptySwitchState();
+    debug = { switchStateReadError: `state-read: ${message}` };
+  }
   const command = parseAgentNotifyCommand(getPrompt(raw), now);
 
   if (getHookEventName(raw) === "UserPromptSubmit" && command.type !== "none") {
+    if (command.type === "status") {
+      return {
+        forwarded: false,
+        sent: false,
+        command: command.type,
+        message: getCodexStatusMessage(state, sessionId, now),
+        ...(debug ? { debug } : {}),
+      };
+    }
     const result = applyCodexSwitchCommand(state, command, sessionId, now);
-    if (command.type !== "status" && command.type !== "invalid") {
+    if (command.type !== "invalid") {
       try {
         writeState(statePath, result.state);
       } catch {
@@ -331,6 +374,7 @@ export async function handleCodexEvent(config, raw, deps = {}) {
           sent: false,
           command: command.type,
           error: "state-write",
+          ...(debug ? { debug } : {}),
         };
       }
     }
@@ -339,6 +383,7 @@ export async function handleCodexEvent(config, raw, deps = {}) {
       sent: false,
       command: command.type,
       message: result.message,
+      ...(debug ? { debug } : {}),
     };
   }
 
@@ -346,7 +391,9 @@ export async function handleCodexEvent(config, raw, deps = {}) {
   if (!forwarded) return { forwarded: false, sent: false };
 
   const muted = getCodexMuteReason(state, sessionId, now);
-  if (muted) return { forwarded: true, sent: false, muted };
+  if (muted) {
+    return { forwarded: true, sent: false, muted, ...(debug ? { debug } : {}) };
+  }
 
   const sent = await sendCodexEvent(
     config.serverUrl,
@@ -355,7 +402,7 @@ export async function handleCodexEvent(config, raw, deps = {}) {
     raw,
     fetchImpl,
   );
-  return { forwarded: true, sent };
+  return { forwarded: true, sent, ...(debug ? { debug } : {}) };
 }
 
 async function main() {
@@ -374,7 +421,7 @@ async function main() {
   }
 
   const result = await handleCodexEvent(config, raw);
-  writeDebugLog(config, raw, result.forwarded, result.sent);
+  writeDebugLog(config, raw, result.forwarded, result.sent, result.debug);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

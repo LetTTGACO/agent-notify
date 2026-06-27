@@ -1,3 +1,6 @@
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 const adapter = await import("../../examples/codex/codex-agent-notify.mjs");
@@ -244,5 +247,117 @@ describe("Codex adapter example", () => {
     expect(fetchMock).not.toHaveBeenCalled();
     expect(readState).toHaveBeenCalledWith(statePath);
     expect(writeState).not.toHaveBeenCalled();
+  });
+
+  it("executes /agent-notify status through handleCodexEvent", async () => {
+    const statePath = "/tmp/agent-notify-codex-status.json";
+    const readState = vi.fn().mockReturnValue({
+      persistentDisabled: true,
+      disabledSessions: {},
+    });
+    const writeState = vi.fn();
+    const fetchMock = vi.fn();
+
+    await expect(
+      adapter.handleCodexEvent(
+        {
+          serverUrl: "http://127.0.0.1:8787",
+          token: "secret",
+          timeoutMs: 2_000,
+        },
+        {
+          hook_event_name: "UserPromptSubmit",
+          session_id: "codex_session_9",
+          prompt: "/agent-notify status",
+        },
+        {
+          fetchImpl: fetchMock,
+          now: new Date("2026-06-28T08:01:00.000Z"),
+          statePath,
+          readState,
+          writeState,
+        },
+      ),
+    ).resolves.toEqual({
+      forwarded: false,
+      sent: false,
+      command: "status",
+      message: "AgentNotify is persistently muted for Codex.",
+    });
+
+    expect(readState).toHaveBeenCalledWith(statePath);
+    expect(writeState).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("forwards Codex events when the switch state file is malformed and surfaces debug info", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "agent-notify-codex-"));
+    const statePath = join(tempDir, "codex.json");
+    writeFileSync(statePath, "{not-json", "utf8");
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+
+    await expect(
+      adapter.handleCodexEvent(
+        {
+          serverUrl: "http://127.0.0.1:8787",
+          token: "secret",
+          timeoutMs: 2_000,
+        },
+        {
+          hook_event_name: "PermissionRequest",
+          session_id: "codex_session_11",
+          tool_name: "Bash",
+        },
+        {
+          fetchImpl: fetchMock,
+          now: new Date("2026-06-28T08:01:00.000Z"),
+          statePath,
+        },
+      ),
+    ).resolves.toEqual({
+      forwarded: true,
+      sent: true,
+      debug: expect.objectContaining({
+        switchStateReadError: expect.stringContaining("state-read"),
+      }),
+    });
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("forwards Codex events when reading switch state throws and surfaces debug info", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+    const readState = vi.fn(() => {
+      throw new Error("EACCES: permission denied");
+    });
+
+    await expect(
+      adapter.handleCodexEvent(
+        {
+          serverUrl: "http://127.0.0.1:8787",
+          token: "secret",
+          timeoutMs: 2_000,
+        },
+        {
+          hook_event_name: "PermissionRequest",
+          session_id: "codex_session_12",
+          tool_name: "Bash",
+        },
+        {
+          fetchImpl: fetchMock,
+          now: new Date("2026-06-28T08:01:00.000Z"),
+          statePath: "/tmp/agent-notify-codex-unreadable.json",
+          readState,
+        },
+      ),
+    ).resolves.toEqual({
+      forwarded: true,
+      sent: true,
+      debug: expect.objectContaining({
+        switchStateReadError: "state-read: EACCES: permission denied",
+      }),
+    });
+
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
 });
