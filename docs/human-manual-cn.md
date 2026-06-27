@@ -54,7 +54,11 @@ Codex 侧支持这些 hooks：
 ~/.config/agent-notify/state/opencode.json
 ```
 
-如果设置了 `XDG_CONFIG_HOME`，文件会放在 `$XDG_CONFIG_HOME/agent-notify/state/` 下。状态文件不存在或损坏时会按“已开启通知”处理，避免坏掉的静音文件永久阻断通知。
+如果设置了 `XDG_CONFIG_HOME`，文件会放在 `$XDG_CONFIG_HOME/agent-notify/state/` 下。状态文件不存在、malformed 或 unreadable 时会按“已开启通知”处理，避免这类静音文件永久阻断通知。
+
+静音优先级是 持久 > 定时 > 会话：持久静音会覆盖正在生效的定时静音，正在生效的定时静音会覆盖会话静音。
+
+malformed 或 unreadable 的状态文件会默认把通知保持在开启状态。若配置了 debug 日志，这类读取错误会写入对应的 debug 日志，方便你在日志里看到这个回退。
 
 ## 交互冷却降噪
 

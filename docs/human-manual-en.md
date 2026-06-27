@@ -54,7 +54,11 @@ Switch state is stored in:
 ~/.config/agent-notify/state/opencode.json
 ```
 
-If `XDG_CONFIG_HOME` is set, the files live under `$XDG_CONFIG_HOME/agent-notify/state/` instead. Missing or broken state files are treated as enabled so a damaged mute file cannot silently block notifications forever.
+If `XDG_CONFIG_HOME` is set, the files live under `$XDG_CONFIG_HOME/agent-notify/state/` instead. Missing, malformed, or unreadable state files are treated as enabled so notifications keep flowing instead of getting blocked by a bad mute file.
+
+Mute precedence is persistent > timed > session: a persistent mute overrides an active timed mute, and an active timed mute overrides a session mute.
+
+Malformed or unreadable state files default notifications to enabled. When debug logging is configured, the read error is written to the configured debug log so you can see the fallback in the logs.
 
 ## Interaction cooldown (noise reduction)
 
