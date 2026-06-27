@@ -71,6 +71,89 @@ describe("Codex adapter example", () => {
     expect(config.timeoutMs).toBe(5_000);
   });
 
+  it("parses AgentNotify commands for Codex", () => {
+    const now = new Date("2026-06-28T08:00:00.000Z");
+
+    expect(adapter.parseAgentNotifyCommand("/agent-notify on", now)).toEqual({
+      type: "on",
+    });
+    expect(adapter.parseAgentNotifyCommand("/agent-notify status", now)).toEqual(
+      {
+        type: "status",
+      },
+    );
+    expect(adapter.parseAgentNotifyCommand("/agent-notify off", now)).toEqual({
+      type: "off-session",
+    });
+    expect(
+      adapter.parseAgentNotifyCommand("/agent-notify off persist", now),
+    ).toEqual({
+      type: "off-persist",
+    });
+    expect(adapter.parseAgentNotifyCommand("/agent-notify off 30m", now)).toEqual(
+      {
+        type: "off-until",
+        until: "2026-06-28T08:30:00.000Z",
+      },
+    );
+    expect(adapter.parseAgentNotifyCommand("/agent-notify nope", now).type).toBe(
+      "invalid",
+    );
+    expect(adapter.parseAgentNotifyCommand("normal prompt", now)).toEqual({
+      type: "none",
+    });
+  });
+
+  it("evaluates Codex switch state by precedence", () => {
+    const now = new Date("2026-06-28T08:00:00.000Z");
+
+    expect(
+      adapter.getCodexMuteReason(
+        { persistentDisabled: true, disabledSessions: {} },
+        "codex_session_1",
+        now,
+      ),
+    ).toBe("persistent");
+
+    expect(
+      adapter.getCodexMuteReason(
+        {
+          persistentDisabled: false,
+          temporaryDisabledUntil: "2026-06-28T08:05:00.000Z",
+          disabledSessions: {},
+        },
+        "codex_session_1",
+        now,
+      ),
+    ).toBe("timed");
+
+    expect(
+      adapter.getCodexMuteReason(
+        {
+          persistentDisabled: false,
+          temporaryDisabledUntil: "2026-06-28T07:59:00.000Z",
+          disabledSessions: {
+            codex_session_1: { disabledAt: "2026-06-28T07:55:00.000Z" },
+          },
+        },
+        "codex_session_1",
+        now,
+      ),
+    ).toBe("session");
+
+    expect(
+      adapter.getCodexMuteReason(
+        {
+          persistentDisabled: false,
+          temporaryDisabledUntil: "2026-06-28T07:59:00.000Z",
+          disabledSessions: {},
+        },
+        "codex_session_1",
+        now,
+      ),
+    ).toBeUndefined();
+  });
+
   it("posts forwarded events to the existing /events endpoint", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
 
@@ -123,5 +206,43 @@ describe("Codex adapter example", () => {
         fetchMock,
       ),
     ).resolves.toBe(false);
+  });
+
+  it("does not send Codex events while the current session is muted", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+    const statePath = "/tmp/agent-notify-codex-muted.json";
+    const readState = vi.fn().mockReturnValue({
+      persistentDisabled: false,
+      disabledSessions: {
+        codex_session_5: { disabledAt: "2026-06-28T08:00:00.000Z" },
+      },
+    });
+    const writeState = vi.fn();
+
+    await expect(
+      adapter.handleCodexEvent(
+        {
+          serverUrl: "http://127.0.0.1:8787",
+          token: "secret",
+          timeoutMs: 2_000,
+        },
+        {
+          hook_event_name: "PermissionRequest",
+          session_id: "codex_session_5",
+          tool_name: "Bash",
+        },
+        {
+          fetchImpl: fetchMock,
+          now: new Date("2026-06-28T08:01:00.000Z"),
+          statePath,
+          readState,
+          writeState,
+        },
+      ),
+    ).resolves.toEqual({ forwarded: true, sent: false, muted: "session" });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(readState).toHaveBeenCalledWith(statePath);
+    expect(writeState).not.toHaveBeenCalled();
   });
 });
