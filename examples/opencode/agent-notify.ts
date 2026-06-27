@@ -62,6 +62,24 @@ function withSwitchStateReadError(message: string): AgentNotifySwitchState {
   };
 }
 
+function readDisabledSessions(
+  value: unknown,
+): Record<string, { disabledAt: string }> {
+  if (value === undefined) return {};
+  if (!isRecord(value)) {
+    throw new Error("invalid disabledSessions");
+  }
+
+  const disabledSessions: Record<string, { disabledAt: string }> = {};
+  for (const [sessionId, sessionState] of Object.entries(value)) {
+    if (!isRecord(sessionState) || typeof sessionState.disabledAt !== "string") {
+      throw new Error(`invalid disabledSessions.${sessionId}`);
+    }
+    disabledSessions[sessionId] = { disabledAt: sessionState.disabledAt };
+  }
+  return disabledSessions;
+}
+
 function addDuration(now: Date, amount: number, unit: string): Date {
   const multipliers: Record<string, number> = {
     s: 1_000,
@@ -190,9 +208,7 @@ export function readOpenCodeSwitchState(
         typeof raw.temporaryDisabledUntil === "string"
           ? raw.temporaryDisabledUntil
           : undefined,
-      disabledSessions: isRecord(raw.disabledSessions)
-        ? (raw.disabledSessions as Record<string, { disabledAt: string }>)
-        : {},
+      disabledSessions: readDisabledSessions(raw.disabledSessions),
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
