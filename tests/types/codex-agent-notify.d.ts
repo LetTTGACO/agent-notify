@@ -9,6 +9,7 @@ declare module "*codex/codex-agent-notify.mjs" {
     | { type: "none" }
     | { type: "on" }
     | { type: "status" }
+    | { type: "clear-sessions" }
     | { type: "off-session" }
     | { type: "off-persist" }
     | { type: "off-until"; until: string }

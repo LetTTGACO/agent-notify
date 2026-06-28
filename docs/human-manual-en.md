@@ -41,6 +41,7 @@ Each tool has its own AgentNotify switch. Turning notifications off in Codex doe
 Commands:
 
 - `/agent-notify off`: mute the current session for the current tool.
+- `/agent-notify clear`: clear all session mute records for the current tool without changing timed or persistent mutes.
 - `/agent-notify on`: re-enable the current tool and clear current-session, timed, and persistent mutes.
 - `/agent-notify off 30m`: mute the current tool for 30 minutes. The units are `s`, `m`, `h`, and `d`.
 - `/agent-notify off persist`: keep the current tool muted until `/agent-notify on`.
@@ -59,6 +60,8 @@ Switch state is stored in:
 Missing, malformed, or unreadable state files are treated as enabled so notifications keep flowing instead of getting blocked by a bad mute file.
 
 Mute precedence is persistent > timed > session: a persistent mute overrides an active timed mute, and an active timed mute overrides a session mute.
+
+Session mutes are recorded per session so parallel sessions in the same tool do not affect each other. Each tool keeps at most the latest 5 session mute records; when `/agent-notify off` adds a new current-session mute, the adapter/plugin drops older records beyond that limit. `/agent-notify status` and normal notification events do not trigger this trimming.
 
 Malformed or unreadable state files default notifications to enabled. When debug logging is configured, the read error is written to the configured debug log so you can see the fallback in the logs.
 

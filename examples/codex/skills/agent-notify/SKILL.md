@@ -29,6 +29,7 @@ template. Examples:
 - `/agent-notify on please`: invalid
 - `/agent-notify status explain this`: invalid
 - `/agent-notify off 1h then summarize`: invalid
+- `/agent-notify clear please`: invalid
 
 If the user includes other text before the command, answer normally and do not
 say the hook has applied a state change. Example:
@@ -38,6 +39,7 @@ say the hook has applied a state change. Example:
 Supported commands:
 
 - no arguments, equivalent to `status`
+- `clear`
 - `off`
 - `off <duration>`, where duration uses `s`, `m`, `h`, or `d`
 - `off persist`
@@ -46,12 +48,13 @@ Supported commands:
 
 ## Responses
 
-For `off`, `off <duration>`, `off persist`, and `on`, trust that the Codex hook
-adapter has already applied the state change. Reply with exactly one short
-confirmation sentence.
+For `clear`, `off`, `off <duration>`, `off persist`, and `on`, trust that the
+Codex hook adapter has already applied the state change. Reply with exactly one
+short confirmation sentence.
 
 Use these templates:
 
+- `clear`: `AgentNotify: Codex 会话静音记录已清除。`
 - `off`: `AgentNotify: Codex 当前会话通知已关闭。`
 - `off <duration>`: `AgentNotify: Codex 通知已关闭，持续 <duration>。`
 - `off persist`: `AgentNotify: Codex 通知已持久关闭。`
@@ -59,7 +62,7 @@ Use these templates:
 
 For invalid commands, reply:
 
-`AgentNotify: 用法是 /agent-notify on、/agent-notify off、/agent-notify off 30m、/agent-notify off persist 或 /agent-notify status。`
+`AgentNotify: 用法是 /agent-notify on、/agent-notify off、/agent-notify off 30m、/agent-notify off persist、/agent-notify clear 或 /agent-notify status。`
 
 Do not add extra explanation unless the user asks.
 

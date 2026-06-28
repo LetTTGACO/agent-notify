@@ -41,6 +41,7 @@ Codex 侧支持这些 hooks：
 命令：
 
 - `/agent-notify off`：静音当前工具的当前会话。
+- `/agent-notify clear`：清除当前工具的所有会话静音记录，不影响定时或持久静音。
 - `/agent-notify on`：重新开启当前工具通知，并清掉当前会话、定时和持久静音。
 - `/agent-notify off 30m`：将当前工具静音 30 分钟。支持的单位是 `s`、`m`、`h`、`d`。
 - `/agent-notify off persist`：持久静音当前工具，直到执行 `/agent-notify on`。
@@ -59,6 +60,8 @@ adapter/plugin 负责识别有效命令并写入状态文件；对应的 `agent-
 状态文件不存在、malformed 或 unreadable 时会按“已开启通知”处理，避免这类静音文件永久阻断通知。
 
 静音优先级是 持久 > 定时 > 会话：持久静音会覆盖正在生效的定时静音，正在生效的定时静音会覆盖会话静音。
+
+会话静音按 session 记录，避免同一个工具的并行会话互相影响。每个工具最多保留最近 5 条会话静音记录；当 `/agent-notify off` 新增当前会话静音时，adapter/plugin 会顺手删除超过 5 条的旧记录。`/agent-notify status` 和普通通知事件不会触发这类裁剪。
 
 malformed 或 unreadable 的状态文件会默认把通知保持在开启状态。若配置了 debug 日志，这类读取错误会写入对应的 debug 日志，方便你在日志里看到这个回退。
 

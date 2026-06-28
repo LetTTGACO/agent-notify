@@ -218,12 +218,13 @@ export function parseAgentNotifyCommand(prompt, now = new Date()) {
   const action = parts[1] ?? "status";
   const arg = parts[2];
   if (parts.length > 3) {
-    return { type: "invalid", message: "Usage: /agent-notify on|off|status" };
+    return { type: "invalid", message: "Usage: /agent-notify on|off|clear|status" };
   }
   if (action === "on" && !arg) return { type: "on" };
   if (action === "status" && !arg) return { type: "status" };
+  if (action === "clear" && !arg) return { type: "clear-sessions" };
   if (action !== "off") {
-    return { type: "invalid", message: "Usage: /agent-notify on|off|status" };
+    return { type: "invalid", message: "Usage: /agent-notify on|off|clear|status" };
   }
   if (!arg) return { type: "off-session" };
   if (arg === "persist") return { type: "off-persist" };
@@ -309,6 +310,14 @@ export function applyCodexSwitchCommand(
     return {
       state: next,
       message: `AgentNotify is muted for Codex until ${command.until}.`,
+    };
+  }
+
+  if (command.type === "clear-sessions") {
+    next.disabledSessions = {};
+    return {
+      state: next,
+      message: "AgentNotify session mutes are cleared for Codex.",
     };
   }
 

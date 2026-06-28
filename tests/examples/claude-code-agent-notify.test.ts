@@ -88,6 +88,9 @@ describe("Claude Code adapter example", () => {
     expect(adapter.parseAgentNotifyCommand("/agent-notify status", now)).toEqual({
       type: "status",
     });
+    expect(adapter.parseAgentNotifyCommand("/agent-notify clear", now)).toEqual({
+      type: "clear-sessions",
+    });
     expect(adapter.parseAgentNotifyCommand("/agent-notify off", now)).toEqual({
       type: "off-session",
     });
@@ -177,6 +180,31 @@ describe("Claude Code adapter example", () => {
       claude_session_4: { disabledAt: "2026-06-28T08:00:04.000Z" },
       claude_session_5: { disabledAt: "2026-06-28T08:00:05.000Z" },
       claude_session_6: { disabledAt: "2026-06-28T08:00:06.000Z" },
+    });
+  });
+
+  it("clears only Claude Code session mute records", () => {
+    const result = adapter.applyClaudeCodeSwitchCommand(
+      {
+        persistentDisabled: false,
+        temporaryDisabledUntil: "2026-06-28T09:00:00.000Z",
+        disabledSessions: {
+          claude_session_1: { disabledAt: "2026-06-28T08:00:01.000Z" },
+          claude_session_2: { disabledAt: "2026-06-28T08:00:02.000Z" },
+        },
+      },
+      { type: "clear-sessions" },
+      "claude_session_2",
+      new Date("2026-06-28T08:00:06.000Z"),
+    );
+
+    expect(result).toEqual({
+      state: {
+        persistentDisabled: false,
+        temporaryDisabledUntil: "2026-06-28T09:00:00.000Z",
+        disabledSessions: {},
+      },
+      message: "AgentNotify session mutes are cleared for Claude Code.",
     });
   });
 

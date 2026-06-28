@@ -23,6 +23,7 @@ type AgentNotifyCommand =
   | { type: "none" }
   | { type: "on" }
   | { type: "status" }
+  | { type: "clear-sessions" }
   | { type: "off-session" }
   | { type: "off-persist" }
   | { type: "off-until"; until: string }
@@ -31,6 +32,7 @@ type AgentNotifyCommand =
 interface AgentNotifySwitchState {
   persistentDisabled: boolean;
   temporaryDisabledUntil?: string;
+  currentSessionId?: string;
   disabledSessions: Record<string, { disabledAt: string }>;
   readError?: string;
 }
@@ -132,10 +134,11 @@ export function parseAgentNotifyCommand(
   if (parts[0] !== "/agent-notify") return { type: "none" };
   const action = parts[1] ?? "status";
   const arg = parts[2];
-  if (parts.length > 3) return { type: "invalid", message: "Usage: /agent-notify on|off|status" };
+  if (parts.length > 3) return { type: "invalid", message: "Usage: /agent-notify on|off|clear|status" };
   if (action === "on" && !arg) return { type: "on" };
   if (action === "status" && !arg) return { type: "status" };
-  if (action !== "off") return { type: "invalid", message: "Usage: /agent-notify on|off|status" };
+  if (action === "clear" && !arg) return { type: "clear-sessions" };
+  if (action !== "off") return { type: "invalid", message: "Usage: /agent-notify on|off|clear|status" };
   if (!arg) return { type: "off-session" };
   if (arg === "persist") return { type: "off-persist" };
   const match = arg.match(DURATION_RE);
@@ -241,6 +244,10 @@ export function readOpenCodeSwitchState(
         raw.temporaryDisabledUntil,
         "temporaryDisabledUntil",
       ),
+      currentSessionId: readOptionalStateString(
+        raw.currentSessionId,
+        "currentSessionId",
+      ),
       disabledSessions: readDisabledSessions(raw.disabledSessions),
     };
   } catch (error) {
@@ -266,6 +273,7 @@ export function applyOpenCodeSwitchCommand(
   const next: AgentNotifySwitchState = {
     persistentDisabled: state.persistentDisabled === true,
     temporaryDisabledUntil: state.temporaryDisabledUntil,
+    currentSessionId: state.currentSessionId,
     disabledSessions: { ...state.disabledSessions },
   };
   if (command.type === "on") {
@@ -281,6 +289,10 @@ export function applyOpenCodeSwitchCommand(
   if (command.type === "off-until") {
     next.temporaryDisabledUntil = command.until;
     return { state: next, message: `AgentNotify is muted for OpenCode until ${command.until}.` };
+  }
+  if (command.type === "clear-sessions") {
+    next.disabledSessions = {};
+    return { state: next, message: "AgentNotify session mutes are cleared for OpenCode." };
   }
   if (command.type === "off-session") {
     if (!sessionId) {
@@ -448,12 +460,19 @@ async function handleOpenCodeCommand(
   const result =
     command.type === "status"
       ? {
-          state,
+          state: sessionId ? { ...state, currentSessionId: sessionId } : state,
           message: getOpenCodeStatusMessage(state, sessionId, now),
         }
       : applyOpenCodeSwitchCommand(state, command, sessionId, now);
 
-  if (command.type !== "status" && command.type !== "invalid") {
+  if (command.type !== "invalid" && sessionId) {
+    result.state.currentSessionId = sessionId;
+  }
+
+  if (
+    command.type !== "invalid" &&
+    (command.type !== "status" || (sessionId && !debug))
+  ) {
     writeOpenCodeSwitchState(statePath, result.state);
   }
   if (debug) {
@@ -529,7 +548,7 @@ export const AgentNotifyPlugin = async ({
     config: async (opencodeConfig: { command?: Record<string, unknown> }) => {
       opencodeConfig.command ??= {};
       opencodeConfig.command["agent-notify"] = {
-        description: "Switch AgentNotify notifications on, off, timed, or status",
+        description: "Switch AgentNotify notifications on, off, timed, clear, or status",
         template: "AgentNotify command: $ARGUMENTS",
       };
     },

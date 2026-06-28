@@ -11,6 +11,7 @@ import {
   applyOpenCodeSwitchCommand,
   parseAgentNotifyCommand,
   parseAgentNotifyConfig,
+  readOpenCodeSwitchState,
   shouldNotify,
   summarizeOpenCodeEventForDebug,
 } from "../../examples/opencode/agent-notify.js";
@@ -27,6 +28,9 @@ describe("OpenCode plugin example", () => {
     });
     expect(parseAgentNotifyCommand("/agent-notify status", now)).toEqual({
       type: "status",
+    });
+    expect(parseAgentNotifyCommand("/agent-notify clear", now)).toEqual({
+      type: "clear-sessions",
     });
     expect(parseAgentNotifyCommand("/agent-notify off", now)).toEqual({
       type: "off-session",
@@ -82,6 +86,27 @@ describe("OpenCode plugin example", () => {
     });
 
     expect(config.timeoutMs).toBe(5_000);
+  });
+
+  it("reads the current OpenCode session id from switch state", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "agent-notify-opencode-state-"));
+    const statePath = join(tempDir, "opencode.json");
+
+    writeFileSync(
+      statePath,
+      JSON.stringify({
+        persistentDisabled: false,
+        currentSessionId: "opencode_session_42",
+        disabledSessions: {},
+      }),
+      "utf8",
+    );
+
+    expect(readOpenCodeSwitchState(statePath)).toEqual({
+      persistentDisabled: false,
+      currentSessionId: "opencode_session_42",
+      disabledSessions: {},
+    });
   });
 
   it("summarizes every event for plugin-side debug logs", () => {
@@ -196,6 +221,7 @@ describe("OpenCode plugin example", () => {
     const result = applyOpenCodeSwitchCommand(
       {
         persistentDisabled: false,
+        currentSessionId: "opencode_session_5",
         disabledSessions: {
           opencode_session_1: { disabledAt: "2026-06-28T08:00:01.000Z" },
           opencode_session_2: { disabledAt: "2026-06-28T08:00:02.000Z" },
@@ -215,6 +241,34 @@ describe("OpenCode plugin example", () => {
       opencode_session_4: { disabledAt: "2026-06-28T08:00:04.000Z" },
       opencode_session_5: { disabledAt: "2026-06-28T08:00:05.000Z" },
       opencode_session_6: { disabledAt: "2026-06-28T08:00:06.000Z" },
+    });
+    expect(result.state.currentSessionId).toBe("opencode_session_5");
+  });
+
+  it("clears only OpenCode session mute records", () => {
+    const result = applyOpenCodeSwitchCommand(
+      {
+        persistentDisabled: false,
+        temporaryDisabledUntil: "2026-06-28T09:00:00.000Z",
+        currentSessionId: "opencode_session_2",
+        disabledSessions: {
+          opencode_session_1: { disabledAt: "2026-06-28T08:00:01.000Z" },
+          opencode_session_2: { disabledAt: "2026-06-28T08:00:02.000Z" },
+        },
+      },
+      { type: "clear-sessions" },
+      "opencode_session_2",
+      new Date("2026-06-28T08:00:06.000Z"),
+    );
+
+    expect(result).toEqual({
+      state: {
+        persistentDisabled: false,
+        temporaryDisabledUntil: "2026-06-28T09:00:00.000Z",
+        currentSessionId: "opencode_session_2",
+        disabledSessions: {},
+      },
+      message: "AgentNotify session mutes are cleared for OpenCode.",
     });
   });
 
@@ -266,10 +320,81 @@ describe("OpenCode plugin example", () => {
       expect(output.parts).toEqual([]);
       expect(JSON.parse(readFileSync(statePath, "utf8"))).toMatchObject({
         persistentDisabled: false,
+        currentSessionId: "opencode_session_44",
         disabledSessions: {
           opencode_session_44: {
             disabledAt: expect.any(String),
           },
+        },
+      });
+    } finally {
+      if (previousHome === undefined) {
+        delete process.env.HOME;
+      } else {
+        process.env.HOME = previousHome;
+      }
+    }
+  });
+
+  it("records the current OpenCode session id during status commands for skill fallback", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "agent-notify-opencode-status-"));
+    const homeDir = join(tempDir, "home");
+    const configDir = join(homeDir, ".config", "opencode");
+    const stateDir = join(homeDir, ".config", "agent-notify", "state");
+    const statePath = join(stateDir, "opencode.json");
+
+    mkdirSync(configDir, { recursive: true });
+    mkdirSync(stateDir, { recursive: true });
+    writeFileSync(
+      join(configDir, "agent-notify.json"),
+      JSON.stringify({
+        serverUrl: "http://127.0.0.1:8787",
+        token: "secret",
+        timeoutMs: 2_000,
+      }),
+      "utf8",
+    );
+    writeFileSync(
+      statePath,
+      JSON.stringify({
+        persistentDisabled: false,
+        disabledSessions: {
+          opencode_session_77: { disabledAt: "2026-06-28T08:00:00.000Z" },
+        },
+      }),
+      "utf8",
+    );
+
+    const previousHome = process.env.HOME;
+    process.env.HOME = homeDir;
+
+    try {
+      const plugin = await AgentNotifyPlugin({
+        directory: "/Users/1874w/@1874/agent-notify",
+      });
+      const output = {
+        parts: [{ type: "text", text: "AgentNotify command: status" }],
+      };
+
+      await expect(
+        plugin["command.execute.before"](
+          {
+            command: "agent-notify",
+            arguments: "status",
+            sessionID: "opencode_session_77",
+          },
+          output,
+        ),
+      ).resolves.toEqual({
+        message: "AgentNotify is muted for this OpenCode session.",
+      });
+
+      expect(output.parts).toEqual([]);
+      expect(JSON.parse(readFileSync(statePath, "utf8"))).toMatchObject({
+        persistentDisabled: false,
+        currentSessionId: "opencode_session_77",
+        disabledSessions: {
+          opencode_session_77: { disabledAt: "2026-06-28T08:00:00.000Z" },
         },
       });
     } finally {

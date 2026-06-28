@@ -88,6 +88,9 @@ describe("Codex adapter example", () => {
         type: "status",
       },
     );
+    expect(adapter.parseAgentNotifyCommand("/agent-notify clear", now)).toEqual({
+      type: "clear-sessions",
+    });
     expect(adapter.parseAgentNotifyCommand("/agent-notify off", now)).toEqual({
       type: "off-session",
     });
@@ -195,6 +198,31 @@ describe("Codex adapter example", () => {
       codex_session_4: { disabledAt: "2026-06-28T08:00:04.000Z" },
       codex_session_5: { disabledAt: "2026-06-28T08:00:05.000Z" },
       codex_session_6: { disabledAt: "2026-06-28T08:00:06.000Z" },
+    });
+  });
+
+  it("clears only Codex session mute records", () => {
+    const result = adapter.applyCodexSwitchCommand(
+      {
+        persistentDisabled: false,
+        temporaryDisabledUntil: "2026-06-28T09:00:00.000Z",
+        disabledSessions: {
+          codex_session_1: { disabledAt: "2026-06-28T08:00:01.000Z" },
+          codex_session_2: { disabledAt: "2026-06-28T08:00:02.000Z" },
+        },
+      },
+      { type: "clear-sessions" },
+      "codex_session_2",
+      new Date("2026-06-28T08:00:06.000Z"),
+    );
+
+    expect(result).toEqual({
+      state: {
+        persistentDisabled: false,
+        temporaryDisabledUntil: "2026-06-28T09:00:00.000Z",
+        disabledSessions: {},
+      },
+      message: "AgentNotify session mutes are cleared for Codex.",
     });
   });
 
