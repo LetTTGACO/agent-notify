@@ -50,6 +50,7 @@ function getProperties(raw: unknown): Record<string, unknown> {
 }
 
 const DURATION_RE = /^(\d+)([smhd])$/;
+const MAX_DISABLED_SESSIONS = 5;
 
 function emptySwitchState(): AgentNotifySwitchState {
   return { persistentDisabled: false, disabledSessions: {} };
@@ -78,6 +79,23 @@ function readDisabledSessions(
     disabledSessions[sessionId] = { disabledAt: sessionState.disabledAt };
   }
   return disabledSessions;
+}
+
+function trimDisabledSessions(
+  disabledSessions: Record<string, { disabledAt: string }>,
+): Record<string, { disabledAt: string }> {
+  return Object.fromEntries(
+    Object.entries(disabledSessions)
+      .sort(([, left], [, right]) => {
+        const leftMs = Date.parse(left.disabledAt);
+        const rightMs = Date.parse(right.disabledAt);
+        return (
+          (Number.isFinite(rightMs) ? rightMs : 0) -
+          (Number.isFinite(leftMs) ? leftMs : 0)
+        );
+      })
+      .slice(0, MAX_DISABLED_SESSIONS),
+  );
 }
 
 function readOptionalBoolean(value: unknown, key: string): boolean | undefined {
@@ -272,6 +290,7 @@ export function applyOpenCodeSwitchCommand(
       };
     }
     next.disabledSessions[sessionId] = { disabledAt: now.toISOString() };
+    next.disabledSessions = trimDisabledSessions(next.disabledSessions);
     return { state: next, message: "AgentNotify is muted for this OpenCode session." };
   }
   return { state: next, message: command.type === "invalid" ? command.message : "AgentNotify is on for OpenCode." };

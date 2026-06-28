@@ -172,6 +172,32 @@ describe("Codex adapter example", () => {
     ).toBeUndefined();
   });
 
+  it("keeps only the latest five muted Codex sessions", () => {
+    const result = adapter.applyCodexSwitchCommand(
+      {
+        persistentDisabled: false,
+        disabledSessions: {
+          codex_session_1: { disabledAt: "2026-06-28T08:00:01.000Z" },
+          codex_session_2: { disabledAt: "2026-06-28T08:00:02.000Z" },
+          codex_session_3: { disabledAt: "2026-06-28T08:00:03.000Z" },
+          codex_session_4: { disabledAt: "2026-06-28T08:00:04.000Z" },
+          codex_session_5: { disabledAt: "2026-06-28T08:00:05.000Z" },
+        },
+      },
+      { type: "off-session" },
+      "codex_session_6",
+      new Date("2026-06-28T08:00:06.000Z"),
+    );
+
+    expect(result.state.disabledSessions).toEqual({
+      codex_session_2: { disabledAt: "2026-06-28T08:00:02.000Z" },
+      codex_session_3: { disabledAt: "2026-06-28T08:00:03.000Z" },
+      codex_session_4: { disabledAt: "2026-06-28T08:00:04.000Z" },
+      codex_session_5: { disabledAt: "2026-06-28T08:00:05.000Z" },
+      codex_session_6: { disabledAt: "2026-06-28T08:00:06.000Z" },
+    });
+  });
+
   it("posts forwarded events to the existing /events endpoint", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
 

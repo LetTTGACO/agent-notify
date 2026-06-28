@@ -8,6 +8,7 @@ import {
   getOpenCodeMuteReason,
   getOpenCodeSessionId,
   notify,
+  applyOpenCodeSwitchCommand,
   parseAgentNotifyCommand,
   parseAgentNotifyConfig,
   shouldNotify,
@@ -189,6 +190,32 @@ describe("OpenCode plugin example", () => {
     ).resolves.toEqual({ forwarded: true, sent: false, muted: "session" });
 
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps only the latest five muted OpenCode sessions", () => {
+    const result = applyOpenCodeSwitchCommand(
+      {
+        persistentDisabled: false,
+        disabledSessions: {
+          opencode_session_1: { disabledAt: "2026-06-28T08:00:01.000Z" },
+          opencode_session_2: { disabledAt: "2026-06-28T08:00:02.000Z" },
+          opencode_session_3: { disabledAt: "2026-06-28T08:00:03.000Z" },
+          opencode_session_4: { disabledAt: "2026-06-28T08:00:04.000Z" },
+          opencode_session_5: { disabledAt: "2026-06-28T08:00:05.000Z" },
+        },
+      },
+      { type: "off-session" },
+      "opencode_session_6",
+      new Date("2026-06-28T08:00:06.000Z"),
+    );
+
+    expect(result.state.disabledSessions).toEqual({
+      opencode_session_2: { disabledAt: "2026-06-28T08:00:02.000Z" },
+      opencode_session_3: { disabledAt: "2026-06-28T08:00:03.000Z" },
+      opencode_session_4: { disabledAt: "2026-06-28T08:00:04.000Z" },
+      opencode_session_5: { disabledAt: "2026-06-28T08:00:05.000Z" },
+      opencode_session_6: { disabledAt: "2026-06-28T08:00:06.000Z" },
+    });
   });
 
   it("registers command.execute.before, mutes the current session, and clears output parts", async () => {

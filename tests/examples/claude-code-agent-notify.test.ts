@@ -154,6 +154,32 @@ describe("Claude Code adapter example", () => {
     ).toBe("session");
   });
 
+  it("keeps only the latest five muted Claude Code sessions", () => {
+    const result = adapter.applyClaudeCodeSwitchCommand(
+      {
+        persistentDisabled: false,
+        disabledSessions: {
+          claude_session_1: { disabledAt: "2026-06-28T08:00:01.000Z" },
+          claude_session_2: { disabledAt: "2026-06-28T08:00:02.000Z" },
+          claude_session_3: { disabledAt: "2026-06-28T08:00:03.000Z" },
+          claude_session_4: { disabledAt: "2026-06-28T08:00:04.000Z" },
+          claude_session_5: { disabledAt: "2026-06-28T08:00:05.000Z" },
+        },
+      },
+      { type: "off-session" },
+      "claude_session_6",
+      new Date("2026-06-28T08:00:06.000Z"),
+    );
+
+    expect(result.state.disabledSessions).toEqual({
+      claude_session_2: { disabledAt: "2026-06-28T08:00:02.000Z" },
+      claude_session_3: { disabledAt: "2026-06-28T08:00:03.000Z" },
+      claude_session_4: { disabledAt: "2026-06-28T08:00:04.000Z" },
+      claude_session_5: { disabledAt: "2026-06-28T08:00:05.000Z" },
+      claude_session_6: { disabledAt: "2026-06-28T08:00:06.000Z" },
+    });
+  });
+
   it("posts forwarded events to the existing /events endpoint", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
 

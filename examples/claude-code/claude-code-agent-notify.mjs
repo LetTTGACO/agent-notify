@@ -135,6 +135,7 @@ function readOptionalString(raw, key) {
 
 const DEFAULT_TIMEOUT_MS = 2000;
 const DURATION_RE = /^(\d+)([smhd])$/;
+const MAX_DISABLED_SESSIONS = 5;
 
 function emptySwitchState() {
   return {
@@ -164,6 +165,21 @@ function readDisabledSessions(value) {
     disabledSessions[sessionId] = { disabledAt: sessionState.disabledAt };
   }
   return disabledSessions;
+}
+
+function trimDisabledSessions(disabledSessions) {
+  return Object.fromEntries(
+    Object.entries(disabledSessions)
+      .sort(([, left], [, right]) => {
+        const leftMs = Date.parse(left.disabledAt);
+        const rightMs = Date.parse(right.disabledAt);
+        return (
+          (Number.isFinite(rightMs) ? rightMs : 0) -
+          (Number.isFinite(leftMs) ? leftMs : 0)
+        );
+      })
+      .slice(0, MAX_DISABLED_SESSIONS),
+  );
 }
 
 function readOptionalBoolean(value, key) {
@@ -298,6 +314,7 @@ export function applyClaudeCodeSwitchCommand(
       };
     }
     next.disabledSessions[sessionId] = { disabledAt: now.toISOString() };
+    next.disabledSessions = trimDisabledSessions(next.disabledSessions);
     return {
       state: next,
       message: "AgentNotify is muted for this Claude Code session.",
