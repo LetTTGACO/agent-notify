@@ -221,9 +221,8 @@ export function parseAgentNotifyCommand(prompt, now = new Date()) {
   };
 }
 
-export function getClaudeCodeSwitchStatePath(env = process.env, home = homedir()) {
-  const configHome = env.XDG_CONFIG_HOME || join(home, ".config");
-  return join(configHome, "agent-notify", "state", "claude-code.json");
+export function getClaudeCodeSwitchStatePath(_env = process.env, home = homedir()) {
+  return join(home, ".config", "agent-notify", "state", "claude-code.json");
 }
 
 export function readClaudeCodeSwitchState(statePath) {

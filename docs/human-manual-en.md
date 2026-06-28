@@ -46,6 +46,8 @@ Commands:
 - `/agent-notify off persist`: keep the current tool muted until `/agent-notify on`.
 - `/agent-notify status`: show the current tool's switch state when the host displays command output.
 
+The adapter/plugin recognizes valid commands and writes the state file. The matching `agent-notify` skill only tells the AI how to respond briefly, or how to read the state file and explain the current state for `status`.
+
 Switch state is stored in:
 
 ```text
@@ -54,7 +56,7 @@ Switch state is stored in:
 ~/.config/agent-notify/state/opencode.json
 ```
 
-If `XDG_CONFIG_HOME` is set, the files live under `$XDG_CONFIG_HOME/agent-notify/state/` instead. Missing, malformed, or unreadable state files are treated as enabled so notifications keep flowing instead of getting blocked by a bad mute file.
+Missing, malformed, or unreadable state files are treated as enabled so notifications keep flowing instead of getting blocked by a bad mute file.
 
 Mute precedence is persistent > timed > session: a persistent mute overrides an active timed mute, and an active timed mute overrides a session mute.
 
@@ -234,8 +236,18 @@ Once all three agents are connected, the new files look roughly like this:
 │   └── codex-agent-notify.mjs         # Codex adapter file
 └── opencode/                          # OpenCode directory
     ├── agent-notify.json              # OpenCode plugin config
+    ├── skills/
+    │   └── agent-notify/
+    │       └── SKILL.md               # OpenCode agent-notify skill
     └── plugins/
         └── agent-notify.ts            # OpenCode plugin file
+```
+
+Claude Code and Codex also get global skills:
+
+```text
+~/.claude/skills/agent-notify/SKILL.md
+~/.codex/skills/agent-notify/SKILL.md
 ```
 
 Claude Code hooks live in its settings file (user-level `~/.claude/settings.json` or project-level `.claude/settings.json`).
@@ -304,7 +316,18 @@ The minimal config after copying:
 
 If this file is missing, has broken JSON, or is missing required fields, the plugin fails to initialize. OpenCode keeps plugin failures inside the plugin boundary, so a misconfigured AgentNotify plugin won't block your normal OpenCode work.
 
-### 3. Verify OpenCode notifications
+### 3. Install the OpenCode skill
+
+OpenCode's `agent-notify` skill lives in the global skills directory by default:
+
+```bash
+mkdir -p ~/.config/opencode/skills/agent-notify
+cp examples/opencode/skills/agent-notify/SKILL.md ~/.config/opencode/skills/agent-notify/SKILL.md
+```
+
+The OpenCode plugin still registers `/agent-notify` and writes the state file. The skill only guides the AI's response if the command reaches the conversation.
+
+### 4. Verify OpenCode notifications
 
 Keep the AgentNotify service running:
 
@@ -400,7 +423,18 @@ printf '%s\n' "$HOME/.config/agent-notify/claude-code-agent-notify.mjs"
 
 In the hook config below, replace `/ABS/PATH/.config/agent-notify/claude-code-agent-notify.mjs` with the path this command prints.
 
-### 4. Configure Claude Code hooks
+### 4. Install the Claude Code skill
+
+Claude Code's `agent-notify` skill lives in the global skills directory:
+
+```bash
+mkdir -p ~/.claude/skills/agent-notify
+cp examples/claude-code/skills/agent-notify/SKILL.md ~/.claude/skills/agent-notify/SKILL.md
+```
+
+The hook recognizes `/agent-notify` commands and writes the state file. The skill only guides the AI's response if the command reaches the conversation.
+
+### 5. Configure Claude Code hooks
 
 Merge the following into Claude Code's settings JSON. You can put it in user-level or project-level settings; if you already have a `hooks` section, just merge these four hooks in.
 
@@ -462,7 +496,7 @@ You don't need a `matcher` on `Notification` — the adapter and server both ign
 
 After configuring, restart Claude Code so the settings take effect.
 
-### 5. Verify Claude Code notifications
+### 6. Verify Claude Code notifications
 
 Make sure AgentNotify is running:
 
@@ -550,7 +584,18 @@ printf '%s\n' "$HOME/.config/agent-notify/codex-agent-notify.mjs"
 
 In the hook config below, replace `/ABS/PATH/.config/agent-notify/codex-agent-notify.mjs` with the path this command prints.
 
-### 4. Configure Codex hooks
+### 4. Install the Codex skill
+
+Codex's `agent-notify` skill lives in the global skills directory:
+
+```bash
+mkdir -p ~/.codex/skills/agent-notify
+cp examples/codex/skills/agent-notify/SKILL.md ~/.codex/skills/agent-notify/SKILL.md
+```
+
+The hook recognizes `/agent-notify` commands and writes the state file. The skill only guides the AI's response if the command reaches the conversation.
+
+### 5. Configure Codex hooks
 
 Merge the following into the user-level `~/.codex/hooks.json`. If you already have hooks configured, just merge these three events in.
 
@@ -596,7 +641,7 @@ Merge the following into the user-level `~/.codex/hooks.json`. If you already ha
 
 On first install, or whenever the command path changes, Codex asks for authorization when it opens — choose review and trust this hook. Until trusted, Codex skips non-managed hooks.
 
-### 5. Verify Codex notifications
+### 6. Verify Codex notifications
 
 Keep the AgentNotify service running:
 

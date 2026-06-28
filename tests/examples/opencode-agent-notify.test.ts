@@ -195,8 +195,7 @@ describe("OpenCode plugin example", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "agent-notify-opencode-plugin-"));
     const homeDir = join(tempDir, "home");
     const configDir = join(homeDir, ".config", "opencode");
-    const xdgConfigDir = join(tempDir, "xdg");
-    const stateDir = join(xdgConfigDir, "agent-notify", "state");
+    const stateDir = join(homeDir, ".config", "agent-notify", "state");
     const statePath = join(stateDir, "opencode.json");
 
     mkdirSync(configDir, { recursive: true });
@@ -212,9 +211,7 @@ describe("OpenCode plugin example", () => {
     );
 
     const previousHome = process.env.HOME;
-    const previousXdgConfigHome = process.env.XDG_CONFIG_HOME;
     process.env.HOME = homeDir;
-    process.env.XDG_CONFIG_HOME = xdgConfigDir;
 
     try {
       const plugin = await AgentNotifyPlugin({
@@ -253,11 +250,6 @@ describe("OpenCode plugin example", () => {
         delete process.env.HOME;
       } else {
         process.env.HOME = previousHome;
-      }
-      if (previousXdgConfigHome === undefined) {
-        delete process.env.XDG_CONFIG_HOME;
-      } else {
-        process.env.XDG_CONFIG_HOME = previousXdgConfigHome;
       }
     }
   });
@@ -421,8 +413,7 @@ describe("OpenCode plugin example", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "agent-notify-opencode-debug-"));
     const homeDir = join(tempDir, "home");
     const configDir = join(homeDir, ".config", "opencode");
-    const xdgConfigDir = join(tempDir, "xdg");
-    const stateDir = join(xdgConfigDir, "agent-notify", "state");
+    const stateDir = join(homeDir, ".config", "agent-notify", "state");
     const statePath = join(stateDir, "opencode.json");
     const debugLogPath = join(tempDir, "opencode-debug.log");
 
@@ -441,9 +432,7 @@ describe("OpenCode plugin example", () => {
     writeFileSync(statePath, "{not-json", "utf8");
 
     const previousHome = process.env.HOME;
-    const previousXdgConfigHome = process.env.XDG_CONFIG_HOME;
     process.env.HOME = homeDir;
-    process.env.XDG_CONFIG_HOME = xdgConfigDir;
 
     try {
       const plugin = await AgentNotifyPlugin({
@@ -472,11 +461,6 @@ describe("OpenCode plugin example", () => {
         delete process.env.HOME;
       } else {
         process.env.HOME = previousHome;
-      }
-      if (previousXdgConfigHome === undefined) {
-        delete process.env.XDG_CONFIG_HOME;
-      } else {
-        process.env.XDG_CONFIG_HOME = previousXdgConfigHome;
       }
     }
   });

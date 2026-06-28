@@ -68,7 +68,7 @@ Do not add extra explanation unless the user asks.
 For `status`, read the Codex state file:
 
 ```text
-${XDG_CONFIG_HOME:-$HOME/.config}/agent-notify/state/codex.json
+$HOME/.config/agent-notify/state/codex.json
 ```
 
 If the file is missing, report that Codex notifications are on.

@@ -228,9 +228,8 @@ export function parseAgentNotifyCommand(prompt, now = new Date()) {
   };
 }
 
-export function getCodexSwitchStatePath(env = process.env, home = homedir()) {
-  const configHome = env.XDG_CONFIG_HOME || join(home, ".config");
-  return join(configHome, "agent-notify", "state", "codex.json");
+export function getCodexSwitchStatePath(_env = process.env, home = homedir()) {
+  return join(home, ".config", "agent-notify", "state", "codex.json");
 }
 
 export function readCodexSwitchState(statePath) {

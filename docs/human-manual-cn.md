@@ -46,6 +46,8 @@ Codex 侧支持这些 hooks：
 - `/agent-notify off persist`：持久静音当前工具，直到执行 `/agent-notify on`。
 - `/agent-notify status`：在 host 能显示命令输出时，显示当前工具开关状态。
 
+adapter/plugin 负责识别有效命令并写入状态文件；对应的 `agent-notify` skill 只负责告诉 AI 这类命令应该如何简短回应，或在 `status` 时读取状态文件并说明当前状态。
+
 开关状态存放在：
 
 ```text
@@ -54,7 +56,7 @@ Codex 侧支持这些 hooks：
 ~/.config/agent-notify/state/opencode.json
 ```
 
-如果设置了 `XDG_CONFIG_HOME`，文件会放在 `$XDG_CONFIG_HOME/agent-notify/state/` 下。状态文件不存在、malformed 或 unreadable 时会按“已开启通知”处理，避免这类静音文件永久阻断通知。
+状态文件不存在、malformed 或 unreadable 时会按“已开启通知”处理，避免这类静音文件永久阻断通知。
 
 静音优先级是 持久 > 定时 > 会话：持久静音会覆盖正在生效的定时静音，正在生效的定时静音会覆盖会话静音。
 
@@ -234,8 +236,18 @@ pnpm agent-notify test
 │   └── codex-agent-notify.mjs         # Codex adapter 文件
 └── opencode/                          # OpenCode 目录
     ├── agent-notify.json              # OpenCode 插件配置
+    ├── skills/
+    │   └── agent-notify/
+    │       └── SKILL.md               # OpenCode agent-notify skill
     └── plugins/
         └── agent-notify.ts            # OpenCode 插件文件
+```
+
+另外还会给 Claude Code 和 Codex 安装全局 skill：
+
+```text
+~/.claude/skills/agent-notify/SKILL.md
+~/.codex/skills/agent-notify/SKILL.md
 ```
 
 Claude Code 的 hooks 写在其配置文件中（用户级 `~/.claude/settings.json` 或项目级 `.claude/settings.json`）
@@ -304,7 +316,18 @@ cp examples/opencode/agent-notify.json ~/.config/opencode/agent-notify.json
 
 如果这个文件不存在、JSON 写坏了，或者缺少必填字段，插件会初始化失败。OpenCode 会把插件失败限制在插件边界内，不会因为 AgentNotify 配错就阻塞你的正常 OpenCode 工作。
 
-### 3. 验证 OpenCode 通知
+### 3. 安装 OpenCode skill
+
+OpenCode 的 `agent-notify` skill 默认放在全局 skills 目录：
+
+```bash
+mkdir -p ~/.config/opencode/skills/agent-notify
+cp examples/opencode/skills/agent-notify/SKILL.md ~/.config/opencode/skills/agent-notify/SKILL.md
+```
+
+OpenCode 插件仍然负责注册 `/agent-notify` 命令并写入状态文件；skill 负责让 AI 在命令进入对话时按 AgentNotify 约定回应。
+
+### 4. 验证 OpenCode 通知
 
 保持 AgentNotify 服务运行：
 
@@ -400,7 +423,18 @@ printf '%s\n' "$HOME/.config/agent-notify/claude-code-agent-notify.mjs"
 
 后面的 hook 配置里，把 `/ABS/PATH/.config/agent-notify/claude-code-agent-notify.mjs` 换成这条命令输出的路径。
 
-### 4. 配置 Claude Code hooks
+### 4. 安装 Claude Code skill
+
+Claude Code 的 `agent-notify` skill 放在全局 skills 目录：
+
+```bash
+mkdir -p ~/.claude/skills/agent-notify
+cp examples/claude-code/skills/agent-notify/SKILL.md ~/.claude/skills/agent-notify/SKILL.md
+```
+
+hook 负责识别 `/agent-notify` 命令并写入状态文件；skill 负责让 AI 在命令进入对话时按 AgentNotify 约定回应。
+
+### 5. 配置 Claude Code hooks
 
 把下面这段合并到 Claude Code 的 settings JSON 里。你可以放在用户级 settings，也可以放在项目级 settings；如果你已经有 `hooks` 配置，只需要把这四个 hook 合并进去。
 
@@ -462,7 +496,7 @@ printf '%s\n' "$HOME/.config/agent-notify/claude-code-agent-notify.mjs"
 
 配置完成后，重启 Claude Code，让 settings 生效。
 
-### 5. 验证 Claude Code 通知
+### 6. 验证 Claude Code 通知
 
 先确认 AgentNotify 服务正在运行：
 
@@ -552,7 +586,18 @@ printf '%s\n' "$HOME/.config/agent-notify/codex-agent-notify.mjs"
 
 后面的 hook 配置里，把 `/ABS/PATH/.config/agent-notify/codex-agent-notify.mjs` 换成这条命令输出的路径。
 
-### 4. 配置 Codex hooks
+### 4. 安装 Codex skill
+
+Codex 的 `agent-notify` skill 放在全局 skills 目录：
+
+```bash
+mkdir -p ~/.codex/skills/agent-notify
+cp examples/codex/skills/agent-notify/SKILL.md ~/.codex/skills/agent-notify/SKILL.md
+```
+
+hook 负责识别 `/agent-notify` 命令并写入状态文件；skill 负责让 AI 在命令进入对话时按 AgentNotify 约定回应。
+
+### 5. 配置 Codex hooks
 
 把下面内容合并到用户级 `~/.codex/hooks.json`。如果你已经有 hooks 配置，只需要把三个事件合进去。
 
@@ -598,7 +643,7 @@ printf '%s\n' "$HOME/.config/agent-notify/codex-agent-notify.mjs"
 
 首次安装或 command 路径变化后，打开 Codex 时会请求授权，选择 review 并 trust 这条 hook。未 trust 前，Codex 会跳过非 managed hook。
 
-### 5. 实际验证 Codex 通知
+### 6. 实际验证 Codex 通知
 
 保持 AgentNotify 服务运行：
 

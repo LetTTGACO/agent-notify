@@ -68,7 +68,7 @@ Do not add extra explanation unless the user asks.
 For `status`, read the Claude Code state file:
 
 ```text
-${XDG_CONFIG_HOME:-$HOME/.config}/agent-notify/state/claude-code.json
+$HOME/.config/agent-notify/state/claude-code.json
 ```
 
 If the file is missing, report that Claude Code notifications are on.

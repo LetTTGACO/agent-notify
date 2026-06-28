@@ -190,9 +190,17 @@ Before copying files for a selected agent, check whether AgentNotify files or ho
 | Claude Code | `claude-code.json` and `claude-code-agent-notify.mjs` under the agent-notify config dir, and AgentNotify hook commands in Claude Code settings |
 | Codex | `codex.json` and `codex-agent-notify.mjs` under the agent-notify config dir, and AgentNotify hook commands in Codex hooks |
 
-Only check existence and whether hook commands reference the AgentNotify adapter. Do **not** print, collect, or summarize token values from existing config files.
+Also check for the `agent-notify` skill for each selected agent:
 
-If any selected agent already has AgentNotify files or hook entries, stop before copying or merging. Tell the user which selected agent already appears to have AgentNotify installed, then ask whether they want to redeploy that agent from this manual or keep the existing setup and skip that agent. Do not overwrite existing plugin/config/adapter files unless the user explicitly chooses redeploy.
+| Agent | Existing skill file to check |
+| --- | --- |
+| OpenCode | `~/.config/opencode/skills/agent-notify/SKILL.md` |
+| Claude Code | `~/.claude/skills/agent-notify/SKILL.md` |
+| Codex | `~/.codex/skills/agent-notify/SKILL.md` |
+
+Only check existence, whether hook commands reference the AgentNotify adapter, and whether the skill file already exists. Do **not** print, collect, or summarize token values from existing config files.
+
+If any selected agent already has AgentNotify files, hook entries, or skill files, stop before copying or merging. Tell the user which selected agent already appears to have AgentNotify installed, then ask whether they want to redeploy that agent from this manual or keep the existing setup and skip that agent. Do not overwrite existing plugin/config/adapter/skill files unless the user explicitly chooses redeploy.
 
 ### Path bases
 
@@ -200,7 +208,10 @@ If any selected agent already has AgentNotify files or hook entries, stop before
 | --- | --- |
 | agent-notify config dir | `~/.config/agent-notify/` |
 | OpenCode dir | `~/.config/opencode/` |
+| OpenCode skill | `~/.config/opencode/skills/agent-notify/SKILL.md` |
+| Claude Code skill | `~/.claude/skills/agent-notify/SKILL.md` |
 | Claude Code settings | `~/.claude/settings.json` (managed by Claude Code) |
+| Codex skill | `~/.codex/skills/agent-notify/SKILL.md` |
 | Codex hooks | `~/.codex/hooks.json` |
 
 > Keep the destination locations consistent with the paths used by the adapters.
@@ -217,6 +228,9 @@ cp examples/opencode/agent-notify.ts ~/.config/opencode/plugins/agent-notify.ts
 
 mkdir -p ~/.config/opencode
 cp examples/opencode/agent-notify.json ~/.config/opencode/agent-notify.json
+
+mkdir -p ~/.config/opencode/skills/agent-notify
+cp examples/opencode/skills/agent-notify/SKILL.md ~/.config/opencode/skills/agent-notify/SKILL.md
 ```
 
 **What to change after copying** (guide the user to open `~/.config/opencode/agent-notify.json` in an editor and change only `token`):
@@ -240,6 +254,9 @@ OpenCode has no adapter file and needs no hooks — the plugin is active once in
 mkdir -p ~/.config/agent-notify
 cp examples/claude-code/claude-code.json ~/.config/agent-notify/claude-code.json
 cp examples/claude-code/claude-code-agent-notify.mjs ~/.config/agent-notify/claude-code-agent-notify.mjs
+
+mkdir -p ~/.claude/skills/agent-notify
+cp examples/claude-code/skills/agent-notify/SKILL.md ~/.claude/skills/agent-notify/SKILL.md
 ```
 
 **What to change after copying** (guide the user to open `~/.config/agent-notify/claude-code.json` and change only `token`):
@@ -267,6 +284,9 @@ Note this output — it is the path used in Step 3's hooks. → Go to Step 3.
 mkdir -p ~/.config/agent-notify
 cp examples/codex/codex.json ~/.config/agent-notify/codex.json
 cp examples/codex/codex-agent-notify.mjs ~/.config/agent-notify/codex-agent-notify.mjs
+
+mkdir -p ~/.codex/skills/agent-notify
+cp examples/codex/skills/agent-notify/SKILL.md ~/.codex/skills/agent-notify/SKILL.md
 ```
 
 **What to change after copying** (guide the user to open `~/.config/agent-notify/codex.json` and change only `token`):

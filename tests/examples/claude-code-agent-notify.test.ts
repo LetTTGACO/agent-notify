@@ -378,8 +378,7 @@ describe("Claude Code adapter example", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "agent-notify-claude-cli-"));
     const homeDir = join(tempDir, "home");
     const configDir = join(homeDir, ".config", "agent-notify");
-    const xdgConfigDir = join(tempDir, "xdg");
-    const stateDir = join(xdgConfigDir, "agent-notify", "state");
+    const stateDir = join(homeDir, ".config", "agent-notify", "state");
     const debugLogPath = join(tempDir, "claude-debug.log");
     const statePath = join(stateDir, "claude-code.json");
 
@@ -405,7 +404,6 @@ describe("Claude Code adapter example", () => {
         env: {
           ...process.env,
           HOME: homeDir,
-          XDG_CONFIG_HOME: xdgConfigDir,
         },
         input: JSON.stringify({
           hook_event_name: "Notification",

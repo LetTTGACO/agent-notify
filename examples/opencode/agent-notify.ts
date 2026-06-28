@@ -130,11 +130,10 @@ export function parseAgentNotifyCommand(
 }
 
 export function getOpenCodeSwitchStatePath(
-  env: NodeJS.ProcessEnv = process.env,
+  _env: NodeJS.ProcessEnv = process.env,
   home = homedir(),
 ): string {
-  const configHome = env.XDG_CONFIG_HOME || join(home, ".config");
-  return join(configHome, "agent-notify", "state", "opencode.json");
+  return join(home, ".config", "agent-notify", "state", "opencode.json");
 }
 
 export function getOpenCodeSessionId(raw: unknown): string | undefined {

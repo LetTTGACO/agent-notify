@@ -73,7 +73,7 @@ Do not add extra explanation unless the user asks.
 For `status`, read the OpenCode state file:
 
 ```text
-${XDG_CONFIG_HOME:-$HOME/.config}/agent-notify/state/opencode.json
+$HOME/.config/agent-notify/state/opencode.json
 ```
 
 If the file is missing, report that OpenCode notifications are on.
