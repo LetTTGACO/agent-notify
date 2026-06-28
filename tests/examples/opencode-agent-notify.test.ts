@@ -21,6 +21,9 @@ describe("OpenCode plugin example", () => {
     expect(parseAgentNotifyCommand("/agent-notify on", now)).toEqual({
       type: "on",
     });
+    expect(parseAgentNotifyCommand("/agent-notify", now)).toEqual({
+      type: "status",
+    });
     expect(parseAgentNotifyCommand("/agent-notify status", now)).toEqual({
       type: "status",
     });
@@ -34,6 +37,18 @@ describe("OpenCode plugin example", () => {
       type: "off-until",
       until: "2026-06-29T08:00:00.000Z",
     });
+    expect(parseAgentNotifyCommand("/agent-notify on please", now).type).toBe(
+      "invalid",
+    );
+    expect(parseAgentNotifyCommand("/agent-notify status please", now).type).toBe(
+      "invalid",
+    );
+    expect(parseAgentNotifyCommand("/agent-notify off 1h please", now).type).toBe(
+      "invalid",
+    );
+    expect(parseAgentNotifyCommand("/agent-notify off forever", now).type).toBe(
+      "invalid",
+    );
   });
 
   it("extracts OpenCode session ids from top-level and properties fields", () => {

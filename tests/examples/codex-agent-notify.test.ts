@@ -80,6 +80,9 @@ describe("Codex adapter example", () => {
     expect(adapter.parseAgentNotifyCommand("/agent-notify on", now)).toEqual({
       type: "on",
     });
+    expect(adapter.parseAgentNotifyCommand("/agent-notify", now)).toEqual({
+      type: "status",
+    });
     expect(adapter.parseAgentNotifyCommand("/agent-notify status", now)).toEqual(
       {
         type: "status",
@@ -99,6 +102,18 @@ describe("Codex adapter example", () => {
         until: "2026-06-28T08:30:00.000Z",
       },
     );
+    expect(
+      adapter.parseAgentNotifyCommand("/agent-notify on please", now).type,
+    ).toBe("invalid");
+    expect(
+      adapter.parseAgentNotifyCommand("/agent-notify status please", now).type,
+    ).toBe("invalid");
+    expect(
+      adapter.parseAgentNotifyCommand("/agent-notify off 1h please", now).type,
+    ).toBe("invalid");
+    expect(
+      adapter.parseAgentNotifyCommand("/agent-notify off forever", now).type,
+    ).toBe("invalid");
     expect(adapter.parseAgentNotifyCommand("/agent-notify nope", now).type).toBe(
       "invalid",
     );

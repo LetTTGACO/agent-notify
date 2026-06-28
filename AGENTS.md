@@ -21,6 +21,7 @@ This is a sustainably updated project, not a finished platform. Prefer small, di
 - Keep responsibilities separated: server, formatter, provider, logging, and CLI live under `src/`; the per-agent adapters (the thin forwarding glue that sends each agent's hook events to the server) live under `examples/`. Don't mix agent-forwarding logic into `src/`, and don't push server-side concerns (formatting, throttling, cooldown, provider selection) into the adapters.
 - Add focused tests for behavior changes, especially formatter, auth, config, logging, provider, and server route behavior.
 - Do not commit secrets, `.env`, or raw notification logs from `data/`.
+- Never commit documentation artifacts under `docs/superpowers/` or `.superpowers/`; they are intermediate outputs, not project source.
 - Avoid broad refactors unless they are necessary for the requested change.
 
 ## Fallback And Boundary Policy

@@ -82,6 +82,9 @@ describe("Claude Code adapter example", () => {
     expect(adapter.parseAgentNotifyCommand("/agent-notify on", now)).toEqual({
       type: "on",
     });
+    expect(adapter.parseAgentNotifyCommand("/agent-notify", now)).toEqual({
+      type: "status",
+    });
     expect(adapter.parseAgentNotifyCommand("/agent-notify status", now)).toEqual({
       type: "status",
     });
@@ -97,6 +100,15 @@ describe("Claude Code adapter example", () => {
       type: "off-until",
       until: "2026-06-28T10:00:00.000Z",
     });
+    expect(
+      adapter.parseAgentNotifyCommand("/agent-notify on please", now).type,
+    ).toBe("invalid");
+    expect(
+      adapter.parseAgentNotifyCommand("/agent-notify status please", now).type,
+    ).toBe("invalid");
+    expect(
+      adapter.parseAgentNotifyCommand("/agent-notify off 1h please", now).type,
+    ).toBe("invalid");
     expect(
       adapter.parseAgentNotifyCommand("/agent-notify off forever", now).type,
     ).toBe("invalid");
