@@ -33,10 +33,7 @@ declare module "*claude-code/claude-code-agent-notify.mjs" {
     prompt: unknown,
     now?: Date,
   ): AgentNotifyCommand;
-  export function getClaudeCodeSwitchStatePath(
-    env?: NodeJS.ProcessEnv,
-    home?: string,
-  ): string;
+  export function getClaudeCodeSwitchStatePath(home?: string): string;
   export function readClaudeCodeSwitchState(statePath: string): AgentNotifySwitchState;
   export function writeClaudeCodeSwitchState(
     statePath: string,

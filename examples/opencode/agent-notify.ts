@@ -129,10 +129,7 @@ export function parseAgentNotifyCommand(
   return { type: "off-until", until: addDuration(now, amount, match[2]).toISOString() };
 }
 
-export function getOpenCodeSwitchStatePath(
-  _env: NodeJS.ProcessEnv = process.env,
-  home = homedir(),
-): string {
+export function getOpenCodeSwitchStatePath(home = homedir()): string {
   return join(home, ".config", "agent-notify", "state", "opencode.json");
 }
 

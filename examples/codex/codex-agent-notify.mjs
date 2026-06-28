@@ -228,7 +228,7 @@ export function parseAgentNotifyCommand(prompt, now = new Date()) {
   };
 }
 
-export function getCodexSwitchStatePath(_env = process.env, home = homedir()) {
+export function getCodexSwitchStatePath(home = homedir()) {
   return join(home, ".config", "agent-notify", "state", "codex.json");
 }
 

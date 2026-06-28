@@ -33,10 +33,7 @@ declare module "*codex/codex-agent-notify.mjs" {
     prompt: unknown,
     now?: Date,
   ): AgentNotifyCommand;
-  export function getCodexSwitchStatePath(
-    env?: NodeJS.ProcessEnv,
-    home?: string,
-  ): string;
+  export function getCodexSwitchStatePath(home?: string): string;
   export function readCodexSwitchState(statePath: string): AgentNotifySwitchState;
   export function writeCodexSwitchState(
     statePath: string,
