@@ -1,6 +1,6 @@
 ---
 name: agent-notify
-description: "Handle AgentNotify control commands. Use when the user invokes /agent-notify with on, off, off duration, off persist, clear, or status. Explain the local notification switch result and read the matching AgentNotify state file for status."
+description: "Handle explicit AgentNotify control commands."
 ---
 
 # AgentNotify Command
