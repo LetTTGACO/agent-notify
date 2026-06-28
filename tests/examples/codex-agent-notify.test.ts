@@ -206,6 +206,7 @@ describe("Codex adapter example", () => {
       {
         persistentDisabled: false,
         temporaryDisabledUntil: "2026-06-28T09:00:00.000Z",
+        currentSessionId: "codex_session_1",
         disabledSessions: {
           codex_session_1: { disabledAt: "2026-06-28T08:00:01.000Z" },
           codex_session_2: { disabledAt: "2026-06-28T08:00:02.000Z" },
@@ -220,6 +221,7 @@ describe("Codex adapter example", () => {
       state: {
         persistentDisabled: false,
         temporaryDisabledUntil: "2026-06-28T09:00:00.000Z",
+        currentSessionId: "codex_session_1",
         disabledSessions: {},
       },
       message: "AgentNotify session mutes are cleared for Codex.",
@@ -355,7 +357,11 @@ describe("Codex adapter example", () => {
     });
 
     expect(readState).toHaveBeenCalledWith(statePath);
-    expect(writeState).not.toHaveBeenCalled();
+    expect(writeState).toHaveBeenCalledWith(statePath, {
+      persistentDisabled: true,
+      currentSessionId: "codex_session_9",
+      disabledSessions: {},
+    });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

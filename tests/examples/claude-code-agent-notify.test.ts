@@ -188,6 +188,7 @@ describe("Claude Code adapter example", () => {
       {
         persistentDisabled: false,
         temporaryDisabledUntil: "2026-06-28T09:00:00.000Z",
+        currentSessionId: "claude_session_1",
         disabledSessions: {
           claude_session_1: { disabledAt: "2026-06-28T08:00:01.000Z" },
           claude_session_2: { disabledAt: "2026-06-28T08:00:02.000Z" },
@@ -202,6 +203,7 @@ describe("Claude Code adapter example", () => {
       state: {
         persistentDisabled: false,
         temporaryDisabledUntil: "2026-06-28T09:00:00.000Z",
+        currentSessionId: "claude_session_1",
         disabledSessions: {},
       },
       message: "AgentNotify session mutes are cleared for Claude Code.",
@@ -333,7 +335,11 @@ describe("Claude Code adapter example", () => {
     });
 
     expect(readState).toHaveBeenCalledWith(statePath);
-    expect(writeState).not.toHaveBeenCalled();
+    expect(writeState).toHaveBeenCalledWith(statePath, {
+      persistentDisabled: true,
+      currentSessionId: "claude_session_9",
+      disabledSessions: {},
+    });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

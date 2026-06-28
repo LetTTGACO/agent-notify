@@ -17,6 +17,7 @@ declare module "*claude-code/claude-code-agent-notify.mjs" {
   export interface AgentNotifySwitchState {
     persistentDisabled: boolean;
     temporaryDisabledUntil?: string;
+    currentSessionId?: string;
     disabledSessions: Record<string, { disabledAt: string }>;
     readError?: string;
   }

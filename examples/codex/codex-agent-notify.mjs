@@ -263,6 +263,10 @@ export function readCodexSwitchState(statePath) {
         raw.temporaryDisabledUntil,
         "temporaryDisabledUntil",
       ),
+      currentSessionId: readOptionalStateString(
+        raw.currentSessionId,
+        "currentSessionId",
+      ),
       disabledSessions: readDisabledSessions(raw.disabledSessions),
     };
   } catch (error) {
@@ -285,6 +289,7 @@ export function applyCodexSwitchCommand(
   const next = {
     persistentDisabled: state.persistentDisabled === true,
     temporaryDisabledUntil: state.temporaryDisabledUntil,
+    currentSessionId: state.currentSessionId,
     disabledSessions: isRecord(state.disabledSessions)
       ? { ...state.disabledSessions }
       : {},
@@ -417,6 +422,20 @@ export async function handleCodexEvent(config, raw, deps = {}) {
 
   if (getHookEventName(raw) === "UserPromptSubmit" && command.type !== "none") {
     if (command.type === "status") {
+      const nextState = sessionId ? { ...state, currentSessionId: sessionId } : state;
+      if (sessionId && !debug) {
+        try {
+          writeState(statePath, nextState);
+        } catch {
+          return {
+            forwarded: false,
+            sent: false,
+            command: command.type,
+            error: "state-write",
+            ...(debug ? { debug } : {}),
+          };
+        }
+      }
       return {
         forwarded: false,
         sent: false,
@@ -426,6 +445,9 @@ export async function handleCodexEvent(config, raw, deps = {}) {
       };
     }
     const result = applyCodexSwitchCommand(state, command, sessionId, now);
+    if (command.type !== "invalid" && sessionId) {
+      result.state.currentSessionId = sessionId;
+    }
     if (command.type !== "invalid") {
       try {
         writeState(statePath, result.state);
