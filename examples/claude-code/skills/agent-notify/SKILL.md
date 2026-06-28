@@ -1,6 +1,6 @@
 ---
 name: agent-notify
-description: "Handle AgentNotify control commands. Use when the user invokes /agent-notify. Explain the local notification switch result and read the matching AgentNotify state file for status."
+description: "Handle AgentNotify control commands. Use when the user invokes /agent-notify with on, off, off duration, off persist, clear, or status. Explain the local notification switch result and read the matching AgentNotify state file for status."
 ---
 
 # AgentNotify Command
@@ -22,10 +22,11 @@ the state file unless the user explicitly asks for manual repair.
 
 ## Command Forms
 
-Treat both forms as AgentNotify commands:
+Treat `/agent-notify <args>` as an AgentNotify command.
 
-- `/agent-notify <args>`
-- `AgentNotify command: <args>`
+Only in OpenCode, also treat `AgentNotify command: <args>` as an AgentNotify
+command. That form is emitted by the OpenCode command template; Claude Code and
+Codex adapters do not apply state changes for that form.
 
 Only treat the message as an AgentNotify command when it exactly matches one of
 the supported command forms below. Do not infer a valid command from a prefix.

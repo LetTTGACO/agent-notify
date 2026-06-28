@@ -1,6 +1,6 @@
 ---
 name: agent-notify
-description: "Handle AgentNotify Codex control commands. Use when the user invokes /agent-notify with no arguments, on, off, off duration, off persist, or status. Explain the local notification switch result and read the Codex AgentNotify state file for status."
+description: "Handle AgentNotify Codex control commands. Use when the user invokes /agent-notify with no arguments, on, off, off duration, off persist, clear, or status. Explain the local notification switch result and read the Codex AgentNotify state file for status."
 ---
 
 # AgentNotify Codex Command

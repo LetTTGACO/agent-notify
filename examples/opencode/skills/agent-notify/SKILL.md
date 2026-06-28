@@ -1,6 +1,6 @@
 ---
 name: agent-notify
-description: "Handle AgentNotify OpenCode control commands. Use when the user invokes /agent-notify, or when the prompt says AgentNotify command: on, off, off duration, off persist, or status. Explain the local notification switch result and read the OpenCode AgentNotify state file for status."
+description: "Handle AgentNotify OpenCode control commands. Use when the user invokes /agent-notify, or when the prompt says AgentNotify command: on, off, off duration, off persist, clear, or status. Explain the local notification switch result and read the OpenCode AgentNotify state file for status."
 ---
 
 # AgentNotify OpenCode Command
